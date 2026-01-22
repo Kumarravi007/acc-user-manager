@@ -74,7 +74,10 @@ export async function query<T = any>(
       query: text.substring(0, 100),
     });
 
-    return result;
+    return {
+      rows: result.rows,
+      rowCount: result.rowCount || 0,
+    };
   } catch (error) {
     logger.error('Query error', {
       error,

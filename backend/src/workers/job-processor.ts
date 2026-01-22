@@ -25,7 +25,7 @@ const worker = new Worker<BulkAssignmentJobData>(
     });
 
     const db = getDb();
-    const { executionId, userId, accountId, userEmails, projectIds, role, accessToken } = job.data;
+    const { executionId, accountId, userEmails, projectIds, role, accessToken } = job.data;
 
     try {
       // Update job execution status to processing
@@ -48,7 +48,7 @@ const worker = new Worker<BulkAssignmentJobData>(
           );
 
           // Create job result record
-          const resultRow = await db.query(
+          await db.query(
             `INSERT INTO job_results
              (execution_id, project_id, project_name, user_email, assigned_role, status)
              VALUES ($1, $2, $3, $4, $5, 'pending')

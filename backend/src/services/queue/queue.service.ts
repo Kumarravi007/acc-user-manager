@@ -63,7 +63,6 @@ export class QueueService {
         data,
         {
           jobId: data.executionId,
-          timeout: config.queue.jobTimeoutMs,
         }
       );
 
