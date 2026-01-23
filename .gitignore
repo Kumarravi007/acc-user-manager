@@ -7,6 +7,9 @@ backend/node_modules/
 .env
 .env.local
 .env.production
+.railway-credentials
+.railway-credentials.*
+!.railway-credentials.template
 
 # Build outputs
 dist/
