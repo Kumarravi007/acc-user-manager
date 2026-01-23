@@ -97,9 +97,40 @@ function requireAuth(req: Request, res: Response, next: NextFunction) {
 // Routes
 // ============================================================================
 
-// Health check
-app.get('/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+// Health check with dependency verification
+app.get('/health', async (_req: Request, res: Response) => {
+  const health = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    services: {
+      database: 'unknown',
+      redis: 'unknown',
+    },
+  };
+
+  try {
+    // Check database connection
+    const db = getDb();
+    await db.query('SELECT 1');
+    health.services.database = 'healthy';
+  } catch (error) {
+    health.services.database = 'unhealthy';
+    health.status = 'degraded';
+    logger.error('Database health check failed', { error });
+  }
+
+  try {
+    // Check Redis connection
+    await redisClient.ping();
+    health.services.redis = 'healthy';
+  } catch (error) {
+    health.services.redis = 'unhealthy';
+    health.status = 'degraded';
+    logger.error('Redis health check failed', { error });
+  }
+
+  const statusCode = health.status === 'ok' ? 200 : 503;
+  res.status(statusCode).json(health);
 });
 
 // Auth routes
