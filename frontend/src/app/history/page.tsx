@@ -22,7 +22,7 @@ export default function HistoryPage() {
   const { executions, isLoading, error, refetch } = useJobHistory(50, 0);
   const { jobExecution } = useJobStatus(selectedExecutionId, {
     enabled: !!selectedExecutionId,
-    refetchInterval: false,
+    refetchInterval: 0,
   });
 
   useEffect(() => {
