@@ -15,24 +15,14 @@ export class AuthController {
    */
   async login(req: Request, res: Response): Promise<void> {
     try {
-      // Generate state for CSRF protection
+      // Generate self-verifiable signed state for CSRF protection
+      // This doesn't rely on session storage, so it works across domains
       const state = apsAuthService.generateState();
-
-      // Store state in session
-      req.session.oauthState = state;
 
       // Generate authorization URL
       const authUrl = apsAuthService.generateAuthUrl(state);
 
-      // Explicitly save session before responding (required with saveUninitialized: false)
-      req.session.save((err) => {
-        if (err) {
-          logger.error('Failed to save session', { error: err });
-          res.status(500).json({ error: 'Failed to initiate login' });
-          return;
-        }
-        res.json({ authUrl });
-      });
+      res.json({ authUrl });
     } catch (error) {
       logger.error('Login initiation failed', { error });
       res.status(500).json({ error: 'Failed to initiate login' });
@@ -47,9 +37,11 @@ export class AuthController {
     try {
       const { code, state } = req.query;
 
-      // Validate state to prevent CSRF
-      if (state !== req.session.oauthState) {
-        res.status(400).json({ error: 'Invalid state parameter' });
+      // Validate state using cryptographic verification (stateless approach)
+      // This doesn't rely on session storage, so it works across domains
+      if (!state || !apsAuthService.verifyState(state as string)) {
+        logger.warn('OAuth callback failed: invalid state', { state });
+        res.redirect(`${process.env.FRONTEND_URL}/login?error=invalid_state`);
         return;
       }
 

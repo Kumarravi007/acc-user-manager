@@ -10,6 +10,9 @@ import {
 } from '../../types';
 import logger from '../../utils/logger';
 
+// State token expiration time (10 minutes)
+const STATE_EXPIRATION_MS = 10 * 60 * 1000;
+
 /**
  * APS OAuth 2.0 Authentication Service
  * Handles 3-legged OAuth flow for Autodesk Platform Services
@@ -53,10 +56,74 @@ export class APSAuthService {
   }
 
   /**
-   * Generate random state for CSRF protection
+   * Generate a self-verifiable signed state for CSRF protection.
+   * This doesn't rely on session storage, making it work across domains.
+   * Format: nonce.timestamp.signature
    */
   generateState(): string {
-    return crypto.randomBytes(32).toString('hex');
+    const nonce = crypto.randomBytes(16).toString('hex');
+    const timestamp = Date.now().toString();
+    const data = `${nonce}.${timestamp}`;
+
+    // Create HMAC signature using session secret
+    const signature = crypto
+      .createHmac('sha256', config.session.secret)
+      .update(data)
+      .digest('hex');
+
+    return `${data}.${signature}`;
+  }
+
+  /**
+   * Verify a signed state token.
+   * Checks signature validity and expiration.
+   * @param state - The state token to verify
+   * @returns true if valid, false otherwise
+   */
+  verifyState(state: string): boolean {
+    try {
+      const parts = state.split('.');
+      if (parts.length !== 3) {
+        logger.warn('Invalid state format: wrong number of parts');
+        return false;
+      }
+
+      const [nonce, timestamp, signature] = parts;
+
+      // Verify the signature
+      const data = `${nonce}.${timestamp}`;
+      const expectedSignature = crypto
+        .createHmac('sha256', config.session.secret)
+        .update(data)
+        .digest('hex');
+
+      // Use timing-safe comparison to prevent timing attacks
+      if (!crypto.timingSafeEqual(
+        Buffer.from(signature, 'hex'),
+        Buffer.from(expectedSignature, 'hex')
+      )) {
+        logger.warn('Invalid state: signature mismatch');
+        return false;
+      }
+
+      // Check if state has expired
+      const stateTime = parseInt(timestamp, 10);
+      const now = Date.now();
+      if (now - stateTime > STATE_EXPIRATION_MS) {
+        logger.warn('Invalid state: expired', {
+          stateTime,
+          now,
+          ageMs: now - stateTime
+        });
+        return false;
+      }
+
+      logger.info('State verification successful');
+      return true;
+    } catch (error) {
+      logger.error('State verification error', { error });
+      return false;
+    }
   }
 
   /**
