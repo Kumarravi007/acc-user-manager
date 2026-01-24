@@ -50,7 +50,7 @@ export default function DashboardPage() {
   } = useBulkPreview();
 
   const {
-    execute: executeMutation,
+    executeAsync: executeMutation,
     isLoading: isExecuting,
     error: executeError,
   } = useBulkAssignment();
