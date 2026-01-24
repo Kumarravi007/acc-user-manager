@@ -353,6 +353,7 @@ declare module 'express-session' {
     email?: string;
     accountId?: string;
     isAccountAdmin?: boolean;
+    oauthState?: string;
   }
 }
 

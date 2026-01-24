@@ -52,7 +52,7 @@ app.use(
       secure: config.nodeEnv === 'production',
       httpOnly: true,
       maxAge: config.session.maxAge,
-      sameSite: 'lax',
+      sameSite: config.nodeEnv === 'production' ? 'none' : 'lax',
     },
   })
 );
