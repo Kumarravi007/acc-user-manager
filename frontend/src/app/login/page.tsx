@@ -60,6 +60,15 @@ function LoginContent() {
               </Alert>
             )}
 
+            {error === 'invalid_state' && (
+              <Alert variant="error">
+                <AlertTitle>Session Expired</AlertTitle>
+                <AlertDescription>
+                  Your login session expired. Please try again.
+                </AlertDescription>
+              </Alert>
+            )}
+
             <p className="text-sm text-muted-foreground">
               Sign in with your Autodesk account to access the ACC Multi-Project
               User Manager.
