@@ -348,11 +348,11 @@ export class AuthenticationError extends Error {
 
 declare module 'express-session' {
   interface SessionData {
-    userId: string;
-    apsUserId: string;
-    email: string;
-    accountId: string;
-    isAccountAdmin: boolean;
+    userId?: string;
+    apsUserId?: string;
+    email?: string;
+    accountId?: string;
+    isAccountAdmin?: boolean;
   }
 }
 
