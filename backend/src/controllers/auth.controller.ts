@@ -24,7 +24,15 @@ export class AuthController {
       // Generate authorization URL
       const authUrl = apsAuthService.generateAuthUrl(state);
 
-      res.json({ authUrl });
+      // Explicitly save session before responding (required with saveUninitialized: false)
+      req.session.save((err) => {
+        if (err) {
+          logger.error('Failed to save session', { error: err });
+          res.status(500).json({ error: 'Failed to initiate login' });
+          return;
+        }
+        res.json({ authUrl });
+      });
     } catch (error) {
       logger.error('Login initiation failed', { error });
       res.status(500).json({ error: 'Failed to initiate login' });
