@@ -30,8 +30,8 @@ class ApiClient {
       (response) => response,
       (error: AxiosError) => {
         if (error.response?.status === 401) {
-          // Redirect to login if not authenticated
-          if (typeof window !== 'undefined') {
+          // Redirect to login if not authenticated (but not if already on login page)
+          if (typeof window !== 'undefined' && !window.location.pathname.includes('/login')) {
             window.location.href = '/login';
           }
         }
