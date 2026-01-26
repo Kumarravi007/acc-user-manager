@@ -11,7 +11,9 @@ import {
   JobHistoryItem,
 } from '@/types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+// Use relative URL to go through Next.js proxy (configured in next.config.js)
+// This ensures cookies work properly (same-origin requests)
+const API_BASE_URL = '';
 
 class ApiClient {
   private client: AxiosInstance;

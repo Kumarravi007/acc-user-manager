@@ -2,14 +2,8 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/:path*`,
-      },
-    ];
-  },
+  // API routes in src/app/api/ handle proxying to the backend
+  // This ensures cookies are properly forwarded for authentication
 };
 
 module.exports = nextConfig;
