@@ -21,7 +21,8 @@ export class APSProjectsService {
   private readonly retryDelay = 1000; // 1 second
 
   /**
-   * Get user's ACC/BIM360 accounts
+   * Get user's ACC/BIM360 accounts (hubs)
+   * Uses the Data Management API which works with data:read scope
    * @param accessToken - Valid access token
    * @returns Array of accounts the user has access to
    */
@@ -29,14 +30,31 @@ export class APSProjectsService {
     accessToken: string
   ): Promise<Array<{ id: string; name: string; region: string }>> {
     try {
+      // Use Data Management API to get hubs (which represent ACC/BIM360 accounts)
       const response = await this.makeRequest<{
-        results: Array<{ id: string; name: string; region: string }>;
-      }>('get', '/hq/v1/accounts', accessToken);
+        data: Array<{
+          id: string;
+          attributes: { name: string; region: string };
+        }>;
+      }>('get', '/project/v1/hubs', accessToken);
 
-      logger.info(`Retrieved ${response.results?.length || 0} accounts for user`);
-      return response.results || [];
+      const hubs = response.data || [];
+
+      // Filter for BIM 360 and ACC hubs only (exclude Fusion etc.)
+      // BIM 360 hubs start with "b." and ACC hubs start with "b."
+      const accHubs = hubs
+        .filter(hub => hub.id.startsWith('b.'))
+        .map(hub => ({
+          // Extract account ID from hub ID (remove "b." prefix)
+          id: hub.id.substring(2),
+          name: hub.attributes.name,
+          region: hub.attributes.region || 'US',
+        }));
+
+      logger.info(`Retrieved ${accHubs.length} ACC/BIM360 hubs for user`);
+      return accHubs;
     } catch (error) {
-      logger.error('Failed to get user accounts', { error });
+      logger.error('Failed to get user accounts (hubs)', { error });
       return [];
     }
   }
