@@ -121,8 +121,16 @@ export class AuthController {
         [userId]
       );
 
-      // Redirect to frontend
-      res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
+      // Explicitly save session before redirect (required for cross-domain)
+      req.session.save((err) => {
+        if (err) {
+          logger.error('Failed to save session after login', { error: err });
+          res.redirect(`${process.env.FRONTEND_URL}/login?error=session_error`);
+          return;
+        }
+        // Redirect to frontend
+        res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
+      });
     } catch (error) {
       logger.error('OAuth callback failed', { error });
       res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`);
