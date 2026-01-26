@@ -13,7 +13,7 @@ export class AuthController {
    * Initiate OAuth login
    * GET /api/auth/login
    */
-  async login(req: Request, res: Response): Promise<void> {
+  async login(_req: Request, res: Response): Promise<void> {
     try {
       // Generate self-verifiable signed state for CSRF protection
       // This doesn't rely on session storage, so it works across domains
