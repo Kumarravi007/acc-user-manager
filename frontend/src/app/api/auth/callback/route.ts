@@ -7,31 +7,43 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code');
   const state = searchParams.get('state');
 
+  console.log('[Callback] Starting OAuth callback');
+  console.log('[Callback] BACKEND_URL:', BACKEND_URL);
+
   if (!code || !state) {
+    console.log('[Callback] Missing code or state');
     return NextResponse.redirect(new URL('/login?error=missing_params', request.url));
   }
 
   try {
     // Forward the callback to the backend
     const backendUrl = `${BACKEND_URL}/api/auth/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
+    console.log('[Callback] Forwarding to:', backendUrl);
 
     const response = await fetch(backendUrl, {
       method: 'GET',
       redirect: 'manual', // Don't follow redirects, we need to capture cookies
     });
 
-    // Get cookies from backend response
+    console.log('[Callback] Backend status:', response.status);
+
+    // Get the Set-Cookie header
     const setCookieHeader = response.headers.get('set-cookie');
+    console.log('[Callback] Set-Cookie present:', !!setCookieHeader);
 
     // Determine redirect location from backend response
     const location = response.headers.get('location') || '/dashboard';
+    console.log('[Callback] Location:', location);
 
-    // Parse the redirect URL - extract just the path
+    // Parse the redirect URL - extract just the path for our domain
     let redirectPath = '/dashboard';
     if (location.includes('/login?error=')) {
-      // Error case - extract the error path
-      const url = new URL(location);
-      redirectPath = url.pathname + url.search;
+      try {
+        const url = new URL(location);
+        redirectPath = url.pathname + url.search;
+      } catch {
+        redirectPath = '/login?error=auth_failed';
+      }
     }
 
     // Create response with redirect
@@ -39,38 +51,31 @@ export async function GET(request: NextRequest) {
 
     // Forward the session cookie from backend
     if (setCookieHeader) {
-      // The set-cookie header may contain multiple cookies separated by comma
-      // But connect.sid cookie values contain encoded data that might have commas
-      // So we need to be careful when parsing
-      const cookieStrings = setCookieHeader.split(/,(?=\s*connect\.sid=|\s*[^;,]+=)/);
+      // Extract connect.sid value using regex
+      // Format: connect.sid=s%3A<id>.<sig>; Path=/; HttpOnly; ...
+      const match = setCookieHeader.match(/connect\.sid=([^;]+)/);
 
-      for (const cookieStr of cookieStrings) {
-        // Parse cookie string
-        const parts = cookieStr.trim().split(';');
-        const [nameValue] = parts;
-        const eqIndex = nameValue.indexOf('=');
+      if (match && match[1]) {
+        const cookieValue = match[1];
+        console.log('[Callback] Setting cookie, value length:', cookieValue.length);
 
-        if (eqIndex > 0) {
-          const name = nameValue.substring(0, eqIndex).trim();
-          const value = nameValue.substring(eqIndex + 1).trim();
-
-          if (name === 'connect.sid' && value) {
-            // Set the session cookie on our domain
-            redirectResponse.cookies.set('connect.sid', value, {
-              httpOnly: true,
-              secure: process.env.NODE_ENV === 'production',
-              sameSite: 'lax',
-              path: '/',
-              maxAge: 86400, // 24 hours
-            });
-          }
-        }
+        redirectResponse.cookies.set('connect.sid', cookieValue, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          path: '/',
+          maxAge: 86400, // 24 hours
+        });
+      } else {
+        console.log('[Callback] Could not extract connect.sid from header');
       }
+    } else {
+      console.log('[Callback] No Set-Cookie header in response');
     }
 
     return redirectResponse;
   } catch (error) {
-    console.error('Auth callback error:', error);
+    console.error('[Callback] Error:', error);
     return NextResponse.redirect(new URL('/login?error=auth_failed', request.url));
   }
 }
