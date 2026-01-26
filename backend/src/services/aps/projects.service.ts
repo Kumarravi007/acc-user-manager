@@ -60,7 +60,7 @@ export class APSProjectsService {
   }
 
   /**
-   * Get all projects for an account
+   * Get all projects for an account using Data Management API
    * @param accessToken - Valid access token
    * @param accountId - ACC Account ID
    * @returns Array of projects
@@ -70,27 +70,44 @@ export class APSProjectsService {
     accountId: string
   ): Promise<APSProject[]> {
     const allProjects: APSProject[] = [];
-    let offset = 0;
-    const limit = 100;
+    // Hub ID is "b." + accountId
+    const hubId = `b.${accountId}`;
 
     try {
-      while (true) {
-        const response = await this.makeRequest<{ results: APSProject[] }>(
-          'get',
-          `/hq/v1/accounts/${accountId}/projects`,
-          accessToken,
-          { params: { limit, offset } }
-        );
+      // Use Data Management API to get projects
+      let url: string | null = `/project/v1/hubs/${hubId}/projects`;
 
-        const projects = response.results || [];
+      while (url) {
+        const response = await this.makeRequest<{
+          data: Array<{
+            id: string;
+            attributes: {
+              name: string;
+              scopes: string[];
+              extension: { data: { projectType: string } };
+            };
+          }>;
+          links?: { next?: { href: string } };
+        }>('get', url, accessToken);
+
+        const projects = (response.data || []).map(p => ({
+          id: p.id.replace('b.', ''), // Remove "b." prefix from project ID
+          name: p.attributes.name,
+          status: 'active',
+          platform: p.attributes.extension?.data?.projectType || 'ACC',
+          scopes: p.attributes.scopes,
+        }));
+
         allProjects.push(...projects);
 
-        // If we got fewer than limit, we've reached the end
-        if (projects.length < limit) {
-          break;
+        // Check for pagination
+        if (response.links?.next?.href) {
+          // Extract path from full URL
+          const nextUrl = new URL(response.links.next.href);
+          url = nextUrl.pathname + nextUrl.search;
+        } else {
+          url = null;
         }
-
-        offset += limit;
       }
 
       logger.info(
@@ -98,7 +115,7 @@ export class APSProjectsService {
       );
       return allProjects;
     } catch (error) {
-      logger.error('Failed to get projects', { accountId, error });
+      logger.error('Failed to get projects', { accountId, hubId, error });
       throw error;
     }
   }
