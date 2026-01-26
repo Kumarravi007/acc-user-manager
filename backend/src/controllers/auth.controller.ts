@@ -121,19 +121,33 @@ export class AuthController {
         [userId]
       );
 
-      // Explicitly save session before redirect (required for cross-domain)
+      // Save session and return success response
+      // The session cookie will be set automatically by express-session middleware
       req.session.save((err) => {
         if (err) {
           logger.error('Failed to save session after login', { error: err });
-          res.redirect(`${process.env.FRONTEND_URL}/login?error=session_error`);
+          res.status(500).json({ success: false, error: 'session_error' });
           return;
         }
-        // Redirect to frontend
-        res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
+
+        logger.info('Session saved successfully', {
+          sessionId: req.sessionID,
+          userId: req.session.userId,
+        });
+
+        // Return success with redirect URL - let the frontend proxy handle the redirect
+        res.json({
+          success: true,
+          redirectUrl: '/dashboard',
+          user: {
+            id: userId,
+            email: authResult.userProfile.emailId,
+          },
+        });
       });
     } catch (error) {
       logger.error('OAuth callback failed', { error });
-      res.redirect(`${process.env.FRONTEND_URL}/login?error=auth_failed`);
+      res.status(500).json({ success: false, error: 'auth_failed' });
     }
   }
 

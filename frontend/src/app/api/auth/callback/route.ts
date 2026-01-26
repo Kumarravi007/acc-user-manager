@@ -22,7 +22,9 @@ export async function GET(request: NextRequest) {
 
     const response = await fetch(backendUrl, {
       method: 'GET',
-      redirect: 'manual', // Don't follow redirects, we need to capture cookies
+      headers: {
+        'Accept': 'application/json',
+      },
     });
 
     console.log('[Callback] Backend status:', response.status);
@@ -30,29 +32,26 @@ export async function GET(request: NextRequest) {
     // Get the Set-Cookie header
     const setCookieHeader = response.headers.get('set-cookie');
     console.log('[Callback] Set-Cookie present:', !!setCookieHeader);
-
-    // Determine redirect location from backend response
-    const location = response.headers.get('location') || '/dashboard';
-    console.log('[Callback] Location:', location);
-
-    // Parse the redirect URL - extract just the path for our domain
-    let redirectPath = '/dashboard';
-    if (location.includes('/login?error=')) {
-      try {
-        const url = new URL(location);
-        redirectPath = url.pathname + url.search;
-      } catch {
-        redirectPath = '/login?error=auth_failed';
-      }
+    if (setCookieHeader) {
+      console.log('[Callback] Set-Cookie value (first 100 chars):', setCookieHeader.substring(0, 100));
     }
 
-    // Create response with redirect
-    const redirectResponse = NextResponse.redirect(new URL(redirectPath, request.url));
+    // Parse the JSON response
+    const data = await response.json();
+    console.log('[Callback] Response data:', JSON.stringify(data));
+
+    if (!response.ok || !data.success) {
+      const error = data.error || 'auth_failed';
+      console.log('[Callback] Auth failed:', error);
+      return NextResponse.redirect(new URL(`/login?error=${error}`, request.url));
+    }
+
+    // Create redirect response to dashboard
+    const redirectResponse = NextResponse.redirect(new URL('/dashboard', request.url));
 
     // Forward the session cookie from backend
     if (setCookieHeader) {
       // Extract connect.sid value using regex
-      // Format: connect.sid=s%3A<id>.<sig>; Path=/; HttpOnly; ...
       const match = setCookieHeader.match(/connect\.sid=([^;]+)/);
 
       if (match && match[1]) {
@@ -66,11 +65,12 @@ export async function GET(request: NextRequest) {
           path: '/',
           maxAge: 86400, // 24 hours
         });
+        console.log('[Callback] Cookie set successfully');
       } else {
-        console.log('[Callback] Could not extract connect.sid from header');
+        console.log('[Callback] Could not extract connect.sid from Set-Cookie header');
       }
     } else {
-      console.log('[Callback] No Set-Cookie header in response');
+      console.log('[Callback] WARNING: No Set-Cookie header from backend!');
     }
 
     return redirectResponse;
