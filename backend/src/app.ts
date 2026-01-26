@@ -17,6 +17,9 @@ import bulkOperationsController from './controllers/bulk-operations.controller';
 
 const app: Application = express();
 
+// Trust proxy - required for secure cookies behind Railway's proxy
+app.set('trust proxy', 1);
+
 // Initialize database
 initializeDatabase();
 
