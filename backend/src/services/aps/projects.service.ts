@@ -21,6 +21,27 @@ export class APSProjectsService {
   private readonly retryDelay = 1000; // 1 second
 
   /**
+   * Get user's ACC/BIM360 accounts
+   * @param accessToken - Valid access token
+   * @returns Array of accounts the user has access to
+   */
+  async getUserAccounts(
+    accessToken: string
+  ): Promise<Array<{ id: string; name: string; region: string }>> {
+    try {
+      const response = await this.makeRequest<{
+        results: Array<{ id: string; name: string; region: string }>;
+      }>('get', '/hq/v1/accounts', accessToken);
+
+      logger.info(`Retrieved ${response.results?.length || 0} accounts for user`);
+      return response.results || [];
+    } catch (error) {
+      logger.error('Failed to get user accounts', { error });
+      return [];
+    }
+  }
+
+  /**
    * Get all projects for an account
    * @param accessToken - Valid access token
    * @param accountId - ACC Account ID

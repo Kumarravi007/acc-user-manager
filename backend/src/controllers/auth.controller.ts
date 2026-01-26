@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import apsAuthService from '../services/aps/auth.service';
+import apsProjectsService from '../services/aps/projects.service';
 import { getDb } from '../db';
 import { encrypt } from '../utils/helpers';
 import logger from '../utils/logger';
@@ -60,13 +61,23 @@ export class AuthController {
 
       let userId: string;
 
+      // Fetch user's ACC accounts
+      const accounts = await apsProjectsService.getUserAccounts(authResult.accessToken);
+      const accountId = accounts.length > 0 ? accounts[0].id : null;
+
+      logger.info('User accounts retrieved', {
+        email: authResult.userProfile.emailId,
+        accountCount: accounts.length,
+        accountId,
+      });
+
       if (userRow.rows.length === 0) {
         // Create new user
         const insertResult = await db.query(
           `INSERT INTO users
            (aps_user_id, email, name, access_token_encrypted,
-            refresh_token_encrypted, token_expires_at, last_login_at)
-           VALUES ($1, $2, $3, $4, $5, $6, NOW())
+            refresh_token_encrypted, token_expires_at, account_id, last_login_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
            RETURNING id`,
           [
             authResult.userProfile.userId,
@@ -75,6 +86,7 @@ export class AuthController {
             encrypt(authResult.accessToken),
             encrypt(authResult.refreshToken),
             authResult.expiresAt,
+            accountId,
           ]
         );
 
@@ -83,6 +95,7 @@ export class AuthController {
         logger.info('New user created', {
           userId,
           email: authResult.userProfile.emailId,
+          accountId,
         });
       } else {
         // Update existing user
@@ -93,12 +106,14 @@ export class AuthController {
            SET access_token_encrypted = $1,
                refresh_token_encrypted = $2,
                token_expires_at = $3,
+               account_id = COALESCE($4, account_id),
                last_login_at = NOW()
-           WHERE id = $4`,
+           WHERE id = $5`,
           [
             encrypt(authResult.accessToken),
             encrypt(authResult.refreshToken),
             authResult.expiresAt,
+            accountId,
             userId,
           ]
         );
@@ -106,6 +121,7 @@ export class AuthController {
         logger.info('User logged in', {
           userId,
           email: authResult.userProfile.emailId,
+          accountId,
         });
       }
 
