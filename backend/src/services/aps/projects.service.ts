@@ -73,29 +73,36 @@ export class APSProjectsService {
     // Hub ID is "b." + accountId
     const hubId = `b.${accountId}`;
 
+    // Define response type for Data Management API
+    interface DMProjectResponse {
+      data: Array<{
+        id: string;
+        attributes: {
+          name: string;
+          scopes: string[];
+          extension?: { data?: { projectType?: string } };
+        };
+      }>;
+      links?: { next?: { href: string } };
+    }
+
     try {
       // Use Data Management API to get projects
       let url: string | null = `/project/v1/hubs/${hubId}/projects`;
 
       while (url) {
-        const response = await this.makeRequest<{
-          data: Array<{
-            id: string;
-            attributes: {
-              name: string;
-              scopes: string[];
-              extension: { data: { projectType: string } };
-            };
-          }>;
-          links?: { next?: { href: string } };
-        }>('get', url, accessToken);
+        const response: DMProjectResponse = await this.makeRequest<DMProjectResponse>(
+          'get',
+          url,
+          accessToken
+        );
 
-        const projects = (response.data || []).map(p => ({
+        const projects = (response.data || []).map((p: DMProjectResponse['data'][0]) => ({
           id: p.id.replace('b.', ''), // Remove "b." prefix from project ID
           name: p.attributes.name,
-          status: 'active',
+          accountId: accountId,
+          status: 'active' as const,
           platform: p.attributes.extension?.data?.projectType || 'ACC',
-          scopes: p.attributes.scopes,
         }));
 
         allProjects.push(...projects);
@@ -103,8 +110,8 @@ export class APSProjectsService {
         // Check for pagination
         if (response.links?.next?.href) {
           // Extract path from full URL
-          const nextUrl = new URL(response.links.next.href);
-          url = nextUrl.pathname + nextUrl.search;
+          const nextUrlObj: URL = new URL(response.links.next.href);
+          url = nextUrlObj.pathname + nextUrlObj.search;
         } else {
           url = null;
         }
