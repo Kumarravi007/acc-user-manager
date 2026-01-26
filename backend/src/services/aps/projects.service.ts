@@ -122,7 +122,17 @@ export class APSProjectsService {
       );
       return allProjects;
     } catch (error) {
-      logger.error('Failed to get projects', { accountId, hubId, error });
+      const errorDetails: Record<string, unknown> = { accountId, hubId };
+      if (error instanceof APSError) {
+        errorDetails.statusCode = error.statusCode;
+        errorDetails.errorCode = error.errorCode;
+        errorDetails.message = error.message;
+        errorDetails.requestId = error.requestId;
+      } else if (error instanceof Error) {
+        errorDetails.message = error.message;
+        errorDetails.stack = error.stack;
+      }
+      logger.error('Failed to get projects', errorDetails);
       throw error;
     }
   }

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import apsProjectsService from '../services/aps/projects.service';
 import { getDb } from '../db';
-import { decrypt } from '../utils/helpers';
+import { decrypt, getValidAccessToken } from '../utils/helpers';
 import logger from '../utils/logger';
 
 /**
@@ -18,19 +18,21 @@ export class ProjectsController {
       const userId = req.session.userId!;
       const db = getDb();
 
-      // Get user's access token
-      const userRow = await db.query(
-        'SELECT access_token_encrypted, account_id FROM users WHERE id = $1',
-        [userId]
-      );
-
-      if (userRow.rows.length === 0) {
-        res.status(404).json({ error: 'User not found' });
+      // Get valid access token (refreshes if expired)
+      let accessToken: string;
+      let accountId: string | null;
+      try {
+        const tokenResult = await getValidAccessToken(db, userId);
+        accessToken = tokenResult.accessToken;
+        accountId = tokenResult.accountId;
+      } catch (tokenError) {
+        logger.error('Token error in getProjects', {
+          userId,
+          error: tokenError instanceof Error ? tokenError.message : String(tokenError),
+        });
+        res.status(401).json({ error: 'Session expired. Please log in again.' });
         return;
       }
-
-      const accessToken = decrypt(userRow.rows[0].access_token_encrypted);
-      const accountId = userRow.rows[0].account_id;
 
       // If no account ID stored, get it from APS
       let finalAccountId = accountId;
@@ -87,7 +89,11 @@ export class ProjectsController {
         })),
       });
     } catch (error) {
-      logger.error('Failed to get projects', { error });
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error('Failed to get projects', {
+        errorMessage,
+        errorName: error instanceof Error ? error.name : 'Unknown',
+      });
       res.status(500).json({ error: 'Failed to retrieve projects' });
     }
   }

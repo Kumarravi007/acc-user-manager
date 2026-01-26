@@ -1,5 +1,8 @@
 import CryptoJS from 'crypto-js';
 import { config } from '../config';
+import { Pool } from 'pg';
+import apsAuthService from '../services/aps/auth.service';
+import logger from './logger';
 
 /**
  * Utility helper functions
@@ -180,4 +183,78 @@ export async function retryWithBackoff<T>(
   }
 
   throw lastError!;
+}
+
+/**
+ * Get a valid access token for a user, refreshing if expired
+ * @param db - Database pool
+ * @param userId - User ID
+ * @returns Valid access token and account ID
+ */
+export async function getValidAccessToken(
+  db: Pool,
+  userId: string
+): Promise<{ accessToken: string; accountId: string | null }> {
+  const userRow = await db.query(
+    `SELECT access_token_encrypted, refresh_token_encrypted, token_expires_at, account_id
+     FROM users WHERE id = $1`,
+    [userId]
+  );
+
+  if (userRow.rows.length === 0) {
+    throw new Error('User not found');
+  }
+
+  const user = userRow.rows[0];
+  const tokenExpiresAt = new Date(user.token_expires_at);
+  const now = new Date();
+
+  // Add 5-minute buffer to prevent edge cases
+  const bufferMs = 5 * 60 * 1000;
+  const isExpired = tokenExpiresAt.getTime() - bufferMs < now.getTime();
+
+  if (isExpired) {
+    logger.info('Access token expired, refreshing...', { userId });
+
+    try {
+      const refreshToken = decrypt(user.refresh_token_encrypted);
+      const newTokens = await apsAuthService.refreshAccessToken(refreshToken);
+
+      // Calculate new expiration
+      const newExpiresAt = new Date(Date.now() + newTokens.expires_in * 1000);
+
+      // Update tokens in database
+      await db.query(
+        `UPDATE users
+         SET access_token_encrypted = $1,
+             refresh_token_encrypted = $2,
+             token_expires_at = $3
+         WHERE id = $4`,
+        [
+          encrypt(newTokens.access_token),
+          encrypt(newTokens.refresh_token),
+          newExpiresAt,
+          userId,
+        ]
+      );
+
+      logger.info('Access token refreshed successfully', { userId });
+
+      return {
+        accessToken: newTokens.access_token,
+        accountId: user.account_id,
+      };
+    } catch (error) {
+      logger.error('Failed to refresh access token', {
+        userId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw new Error('Session expired. Please log in again.');
+    }
+  }
+
+  return {
+    accessToken: decrypt(user.access_token_encrypted),
+    accountId: user.account_id,
+  };
 }
