@@ -63,8 +63,8 @@ echo ""
 echo "Please provide the following credentials:"
 echo ""
 
-read -p "APS Client ID: " APS_CLIENT_ID
-read -sp "APS Client Secret (hidden): " APS_CLIENT_SECRET
+read -p "APS Client ID: " Y0tPKoAJHl3idNnPndJCjjE4AaljuRKRb4iD3Ri9l3x2dmjh
+read -sp "APS Client Secret (hidden): "8FXdnXfhREWUiYqt0RQHwYGnWkhL2nAhWM0kOtJGnoWqx8cM84Tbk1SRoGbyKoGv
 echo ""
 
 # Generate secrets

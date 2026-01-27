@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(railway:*)",
+      "Bash(npm install:*)",
+      "Bash(where:*)",
+      "Bash(node --version:*)",
+      "Bash(nvm version)",
+      "Bash(winget:*)",
+      "Bash(choco --version)",
+      "Bash(npm uninstall:*)"
+    ]
+  }
+}

@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { LogOut, History, Plus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useProjects, useProjectRoles, useAccountMembers } from '@/hooks/useProjects';
+import { useProjects, useAccountMembers, useAccountRoles } from '@/hooks/useProjects';
 import {
   useBulkPreview,
   useBulkAssignment,
@@ -41,9 +41,7 @@ export default function DashboardPage() {
   });
   const [executionId, setExecutionId] = useState<string | null>(null);
 
-  const firstProjectId =
-    formData.selectedProjects.length > 0 ? formData.selectedProjects[0] : null;
-  const { roles, isLoading: rolesLoading } = useProjectRoles(firstProjectId);
+  const { roles, isLoading: rolesLoading } = useAccountRoles();
 
   const {
     preview: previewMutation,

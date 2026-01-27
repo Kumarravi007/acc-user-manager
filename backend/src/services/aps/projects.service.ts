@@ -359,6 +359,41 @@ export class APSProjectsService {
   }
 
   /**
+   * Get available roles at account level (from Account Admin > Roles)
+   * @param accessToken - Valid access token
+   * @param accountId - ACC Account ID
+   * @returns Array of account-level industry roles
+   */
+  async getAccountRoles(
+    accessToken: string,
+    accountId: string
+  ): Promise<APSRole[]> {
+    try {
+      logger.info(`Fetching account roles for account ${accountId}`);
+
+      const response = await this.makeRequest<APSRole[]>(
+        'get',
+        `/hq/v1/accounts/${accountId}/industry_roles`,
+        accessToken
+      );
+
+      logger.info(`Retrieved ${response.length} roles for account ${accountId}`);
+      return response;
+    } catch (error) {
+      const errorDetails: Record<string, unknown> = { accountId };
+      if (error instanceof APSError) {
+        errorDetails.statusCode = error.statusCode;
+        errorDetails.errorCode = error.errorCode;
+        errorDetails.message = error.message;
+      } else if (error instanceof Error) {
+        errorDetails.message = error.message;
+      }
+      logger.error('Failed to get account roles', errorDetails);
+      throw error;
+    }
+  }
+
+  /**
    * Check if user exists in project
    * @param accessToken - Valid access token
    * @param accountId - ACC Account ID

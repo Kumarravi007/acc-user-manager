@@ -94,6 +94,11 @@ class ApiClient {
     return response.data;
   }
 
+  async getAccountRoles(): Promise<{ roles: Role[] }> {
+    const response = await this.client.get('/api/account/roles');
+    return response.data;
+  }
+
   // ============================================================================
   // Bulk Operations
   // ============================================================================

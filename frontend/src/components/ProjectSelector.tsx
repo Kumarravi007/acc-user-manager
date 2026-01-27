@@ -8,7 +8,7 @@ import Input from './ui/Input';
 import Badge from './ui/Badge';
 import { cn } from '@/lib/utils';
 
-// ACC (Autodesk Construction Cloud) Icon - Teal blue with building/cloud design
+// ACC (Autodesk Construction Cloud) Icon - Teal globe with grid lines
 const ACCIcon = ({ className }: { className?: string }) => (
   <svg
     viewBox="0 0 24 24"
@@ -17,15 +17,18 @@ const ACCIcon = ({ className }: { className?: string }) => (
     aria-label="Autodesk Construction Cloud"
   >
     <rect width="24" height="24" rx="4" fill="#0696D7" />
-    {/* Cloud shape */}
-    <path
-      d="M17.5 13.5C17.5 11.5 15.9 10 14 10C13.7 10 13.4 10.04 13.1 10.1C12.5 8.3 10.8 7 8.8 7C6.3 7 4.3 9 4.3 11.5C4.3 11.7 4.3 11.9 4.4 12.1C3.5 12.5 3 13.4 3 14.5C3 16 4.2 17 5.5 17H16.5C17.9 17 19 15.9 19 14.5C19 13.6 18.4 13.5 17.5 13.5Z"
-      fill="white"
-    />
+    {/* Globe with grid lines */}
+    <circle cx="12" cy="12" r="6" stroke="white" strokeWidth="1.5" fill="none" />
+    {/* Horizontal lines */}
+    <path d="M6 12h12" stroke="white" strokeWidth="1.5" />
+    <path d="M7.5 9h9" stroke="white" strokeWidth="1" />
+    <path d="M7.5 15h9" stroke="white" strokeWidth="1" />
+    {/* Vertical curve (meridian) */}
+    <ellipse cx="12" cy="12" rx="3" ry="6" stroke="white" strokeWidth="1.5" fill="none" />
   </svg>
 );
 
-// BIM 360 Icon - Orange with circular 360 design
+// BIM 360 Icon - Orange with white "B"
 const BIM360Icon = ({ className }: { className?: string }) => (
   <svg
     viewBox="0 0 24 24"
@@ -34,15 +37,11 @@ const BIM360Icon = ({ className }: { className?: string }) => (
     aria-label="BIM 360"
   >
     <rect width="24" height="24" rx="4" fill="#FF6B00" />
-    {/* Circular arrow representing 360 */}
-    <circle cx="12" cy="12" r="6" stroke="white" strokeWidth="2" fill="none" />
+    {/* Letter B */}
     <path
-      d="M12 6V8M18 12H16M12 18V16M6 12H8"
-      stroke="white"
-      strokeWidth="2"
-      strokeLinecap="round"
+      d="M8 6h5c2.2 0 4 1.3 4 3.5 0 1.2-.6 2.2-1.5 2.8.9.6 1.5 1.6 1.5 2.7 0 2.2-1.8 3.5-4 3.5H8V6zm2 2v3h3c1.1 0 2-.7 2-1.5S14.1 8 13 8h-3zm0 5v3h3c1.1 0 2-.7 2-1.5s-.9-1.5-2-1.5h-3z"
+      fill="white"
     />
-    <circle cx="12" cy="12" r="2" fill="white" />
   </svg>
 );
 

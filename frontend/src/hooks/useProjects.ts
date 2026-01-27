@@ -59,3 +59,18 @@ export function useAccountMembers() {
     refetch,
   };
 }
+
+export function useAccountRoles() {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['accountRoles'],
+    queryFn: () => apiClient.getAccountRoles(),
+    staleTime: 10 * 60 * 1000, // 10 minutes
+  });
+
+  return {
+    roles: data?.roles || [],
+    isLoading,
+    error,
+    refetch,
+  };
+}

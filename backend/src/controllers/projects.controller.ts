@@ -214,6 +214,71 @@ export class ProjectsController {
   }
 
   /**
+   * Get available roles at account level (from ACC Admin > Roles)
+   * GET /api/account/roles
+   */
+  async getAccountRoles(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.session.userId!;
+      const db = getDb();
+
+      // Get valid access token (refreshes if expired)
+      let accessToken: string;
+      let accountId: string | null;
+      try {
+        const tokenResult = await getValidAccessToken(db, userId);
+        accessToken = tokenResult.accessToken;
+        accountId = tokenResult.accountId;
+      } catch (tokenError) {
+        logger.error('Token error in getAccountRoles', {
+          userId,
+          error: tokenError instanceof Error ? tokenError.message : String(tokenError),
+        });
+        res.status(401).json({ error: 'Session expired. Please log in again.' });
+        return;
+      }
+
+      if (!accountId) {
+        res.status(400).json({
+          error: 'Account ID not set. Please contact administrator.',
+        });
+        return;
+      }
+
+      // Fetch account roles from APS
+      const roles = await apsProjectsService.getAccountRoles(
+        accessToken,
+        accountId
+      );
+
+      res.json({
+        roles: roles.map((r) => ({
+          id: r.id,
+          name: r.name,
+          description: r.description,
+        })),
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error('Failed to get account roles', {
+        errorMessage,
+        errorName: error instanceof Error ? error.name : 'Unknown',
+      });
+
+      if (error instanceof APSError) {
+        if (error.statusCode === 403) {
+          res.status(403).json({
+            error: 'You do not have permission to view account roles.',
+          });
+          return;
+        }
+      }
+
+      res.status(500).json({ error: 'Failed to retrieve account roles' });
+    }
+  }
+
+  /**
    * Get all members in the account (from ACC Admin)
    * GET /api/account/members
    */
