@@ -130,10 +130,21 @@ export default function MemberSelector({
               <div className="space-y-4">
                 <div className="text-center py-4 text-muted-foreground">
                   <p className="text-sm text-amber-600 mb-2">
-                    Unable to load account members. You may not have Account Admin access.
+                    Unable to load account members.
                   </p>
+                  {/* Show hint from API if available (for 403 errors) */}
+                  {(error as any)?.response?.data?.hint ? (
+                    <div className="text-xs bg-amber-50 p-3 rounded-lg border border-amber-200 text-left mb-3">
+                      <p className="font-medium text-amber-800 mb-1">How to fix:</p>
+                      <p className="text-amber-700">{(error as any).response.data.hint}</p>
+                    </div>
+                  ) : (
+                    <p className="text-xs mb-2">
+                      Ensure your APS app is added to ACC Admin &gt; Custom Integrations
+                    </p>
+                  )}
                   <p className="text-xs">
-                    Enter email addresses manually below (one per line or comma-separated):
+                    Or enter email addresses manually below (one per line or comma-separated):
                   </p>
                 </div>
                 <textarea

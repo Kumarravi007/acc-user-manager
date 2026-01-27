@@ -41,7 +41,7 @@ export default function DashboardPage() {
   });
   const [executionId, setExecutionId] = useState<string | null>(null);
 
-  const { roles, isLoading: rolesLoading } = useAccountRoles();
+  const { roles, isLoading: rolesLoading, error: rolesError } = useAccountRoles();
 
   const {
     preview: previewMutation,
@@ -299,6 +299,7 @@ export default function DashboardPage() {
                     setFormData({ ...formData, selectedRole: roleId })
                   }
                   isLoading={rolesLoading}
+                  error={rolesError as Error | null}
                 />
 
                 <AccessLevelSelector

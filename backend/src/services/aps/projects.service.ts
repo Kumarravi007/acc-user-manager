@@ -89,7 +89,10 @@ export class APSProjectsService {
     let offset = 0;
     const limit = 100;
 
-    logger.info(`Fetching account users for account ${accountId}`);
+    logger.info(`Fetching account users for account ${accountId}`, {
+      endpoint: `/hq/v1/accounts/${accountId}/users`,
+      accountIdLength: accountId.length,
+    });
 
     try {
       while (true) {
@@ -144,7 +147,7 @@ export class APSProjectsService {
 
         // Provide more helpful error messages for common cases
         if (error.statusCode === 403) {
-          logger.error('User does not have permission to view account members. Account admin access required.', errorDetails);
+          logger.error('Permission denied for account members API. This usually means: 1) The APS app (Client ID) needs to be added to ACC Admin > Custom Integrations, or 2) The user is not an Account Admin.', errorDetails);
         } else if (error.statusCode === 404) {
           logger.error('Account not found or API endpoint not available for this account.', errorDetails);
         }
@@ -654,10 +657,17 @@ export class APSProjectsService {
           }
 
           // Don't retry on 4xx errors (except 429)
+          // Log full error details for debugging
+          logger.error(`APS API Error on ${endpoint}`, {
+            statusCode,
+            responseData: error.response?.data,
+            requestId: error.response?.headers['x-ads-request-id'],
+          });
+
           throw new APSError(
-            error.response?.data?.detail || error.message,
+            error.response?.data?.detail || error.response?.data?.message || error.response?.data?.title || error.message,
             statusCode || 500,
-            error.response?.data?.code,
+            error.response?.data?.code || error.response?.data?.errorCode,
             error.response?.headers['x-ads-request-id']
           );
         }

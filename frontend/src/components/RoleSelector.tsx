@@ -11,7 +11,7 @@ interface RoleSelectorProps {
   selectedRole: string;
   onRoleChange: (roleId: string) => void;
   isLoading?: boolean;
-  error?: string;
+  error?: Error | null;
 }
 
 export default function RoleSelector({
@@ -54,8 +54,17 @@ export default function RoleSelector({
         </p>
       </CardHeader>
       <CardContent>
-        {error && (
-          <div className="mb-4 text-sm text-destructive">{error}</div>
+        {error && roles.length === 0 && (
+          <div className="mb-4 p-3 text-sm bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-amber-700">
+              Unable to load roles from ACC. Using default roles instead.
+            </p>
+            {(error as any)?.response?.data?.hint && (
+              <p className="text-xs text-amber-600 mt-1">
+                {(error as any).response.data.hint}
+              </p>
+            )}
+          </div>
         )}
 
         {isLoading ? (

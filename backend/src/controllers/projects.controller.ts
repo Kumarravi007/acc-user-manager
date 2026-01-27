@@ -281,7 +281,8 @@ export class ProjectsController {
       if (error instanceof APSError) {
         if (error.statusCode === 403) {
           res.status(403).json({
-            error: 'You do not have permission to view roles.',
+            error: 'Permission denied. Please ensure: 1) Your APS app is added to ACC Admin > Custom Integrations, and 2) You are an Account Admin.',
+            hint: 'Go to ACC Admin Portal > Settings > Custom Integrations > Add Custom Integration, and add your app using its Client ID.',
           });
           return;
         }
@@ -353,7 +354,8 @@ export class ProjectsController {
       if (error instanceof APSError) {
         if (error.statusCode === 403) {
           res.status(403).json({
-            error: 'You do not have permission to view account members. Account admin access is required.',
+            error: 'Permission denied. Please ensure: 1) Your APS app is added to ACC Admin > Custom Integrations, and 2) You are an Account Admin.',
+            hint: 'Go to ACC Admin Portal > Settings > Custom Integrations > Add Custom Integration, and add your app using its Client ID.',
           });
           return;
         }
