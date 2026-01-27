@@ -11,21 +11,62 @@ import logger from '../utils/logger';
  */
 export class ProjectsController {
   /**
-   * Get all projects for the authenticated user's account
-   * GET /api/projects
+   * Get all ACC accounts the user has access to
+   * GET /api/accounts
    */
-  async getProjects(req: Request, res: Response): Promise<void> {
+  async getAccounts(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.session.userId!;
       const db = getDb();
 
       // Get valid access token (refreshes if expired)
       let accessToken: string;
-      let accountId: string | null;
       try {
         const tokenResult = await getValidAccessToken(db, userId);
         accessToken = tokenResult.accessToken;
-        accountId = tokenResult.accountId;
+      } catch (tokenError) {
+        logger.error('Token error in getAccounts', {
+          userId,
+          error: tokenError instanceof Error ? tokenError.message : String(tokenError),
+        });
+        res.status(401).json({ error: 'Session expired. Please log in again.' });
+        return;
+      }
+
+      // Fetch accounts from APS
+      const accounts = await apsProjectsService.getUserAccounts(accessToken);
+
+      res.json({
+        accounts: accounts.map((a) => ({
+          id: a.id,
+          name: a.name,
+          region: a.region,
+        })),
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error('Failed to get accounts', { errorMessage });
+      res.status(500).json({ error: 'Failed to retrieve accounts' });
+    }
+  }
+
+  /**
+   * Get all projects for a specific account
+   * GET /api/projects?accountId=xxx
+   */
+  async getProjects(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.session.userId!;
+      const db = getDb();
+      const queryAccountId = req.query.accountId as string | undefined;
+
+      // Get valid access token (refreshes if expired)
+      let accessToken: string;
+      let storedAccountId: string | null;
+      try {
+        const tokenResult = await getValidAccessToken(db, userId);
+        accessToken = tokenResult.accessToken;
+        storedAccountId = tokenResult.accountId;
       } catch (tokenError) {
         logger.error('Token error in getProjects', {
           userId,
@@ -35,13 +76,11 @@ export class ProjectsController {
         return;
       }
 
-      // If no account ID stored, get it from APS
-      let finalAccountId = accountId;
+      // Use query param accountId if provided, otherwise fall back to stored
+      const finalAccountId = queryAccountId || storedAccountId;
       if (!finalAccountId) {
-        // For MVP, we'll require account ID to be set during first login
-        // In production, fetch from APS API
         res.status(400).json({
-          error: 'Account ID not set. Please contact administrator.',
+          error: 'Account ID required. Please select an account.',
         });
         return;
       }
@@ -216,20 +255,21 @@ export class ProjectsController {
   /**
    * Get available roles (from ACC Admin > Roles)
    * Uses project-level endpoint since account-level doesn't exist for ACC
-   * GET /api/account/roles
+   * GET /api/account/roles?accountId=xxx
    */
   async getAccountRoles(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.session.userId!;
       const db = getDb();
+      const queryAccountId = req.query.accountId as string | undefined;
 
       // Get valid access token (refreshes if expired)
       let accessToken: string;
-      let accountId: string | null;
+      let storedAccountId: string | null;
       try {
         const tokenResult = await getValidAccessToken(db, userId);
         accessToken = tokenResult.accessToken;
-        accountId = tokenResult.accountId;
+        storedAccountId = tokenResult.accountId;
       } catch (tokenError) {
         logger.error('Token error in getAccountRoles', {
           userId,
@@ -239,9 +279,11 @@ export class ProjectsController {
         return;
       }
 
+      // Use query param accountId if provided, otherwise fall back to stored
+      const accountId = queryAccountId || storedAccountId;
       if (!accountId) {
         res.status(400).json({
-          error: 'Account ID not set. Please contact administrator.',
+          error: 'Account ID required. Please select an account.',
         });
         return;
       }
@@ -294,20 +336,21 @@ export class ProjectsController {
 
   /**
    * Get all members in the account (from ACC Admin)
-   * GET /api/account/members
+   * GET /api/account/members?accountId=xxx
    */
   async getAccountMembers(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.session.userId!;
       const db = getDb();
+      const queryAccountId = req.query.accountId as string | undefined;
 
       // Get valid access token (refreshes if expired)
       let accessToken: string;
-      let accountId: string | null;
+      let storedAccountId: string | null;
       try {
         const tokenResult = await getValidAccessToken(db, userId);
         accessToken = tokenResult.accessToken;
-        accountId = tokenResult.accountId;
+        storedAccountId = tokenResult.accountId;
       } catch (tokenError) {
         logger.error('Token error in getAccountMembers', {
           userId,
@@ -317,9 +360,11 @@ export class ProjectsController {
         return;
       }
 
+      // Use query param accountId if provided, otherwise fall back to stored
+      const accountId = queryAccountId || storedAccountId;
       if (!accountId) {
         res.status(400).json({
-          error: 'Account ID not set. Please contact administrator.',
+          error: 'Account ID required. Please select an account.',
         });
         return;
       }

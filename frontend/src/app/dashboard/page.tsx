@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { LogOut, History, Plus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useProjects, useAccountMembers, useAccountRoles } from '@/hooks/useProjects';
+import { useAccounts, useProjects, useAccountMembers, useAccountRoles } from '@/hooks/useProjects';
 import {
   useBulkPreview,
   useBulkAssignment,
@@ -13,23 +13,33 @@ import {
 import Button from '@/components/ui/Button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/Alert';
 import Spinner from '@/components/ui/Spinner';
+import AccountSelector from '@/components/AccountSelector';
 import ProjectSelector from '@/components/ProjectSelector';
 import MemberSelector from '@/components/MemberSelector';
 import RoleSelector from '@/components/RoleSelector';
 import AccessLevelSelector from '@/components/AccessLevelSelector';
 import PreviewResults from '@/components/PreviewResults';
 import ExecutionStatus from '@/components/ExecutionStatus';
-import type { BulkAssignmentFormData, AccessLevel } from '@/types';
+import type { BulkAssignmentFormData } from '@/types';
 
 type Step = 'form' | 'preview' | 'executing';
 
 export default function DashboardPage() {
   const router = useRouter();
   const { user, isLoading: authLoading, logout } = useAuth();
+
+  // Account selection state
+  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+
+  // Fetch accounts first
+  const { accounts, isLoading: accountsLoading } = useAccounts();
+
+  // Fetch data based on selected account
   const { projects, isLoading: projectsLoading, error: projectsError } =
-    useProjects();
+    useProjects(selectedAccountId);
   const { members, isLoading: membersLoading, error: membersError } =
-    useAccountMembers();
+    useAccountMembers(selectedAccountId);
+  const { roles, isLoading: rolesLoading, error: rolesError } = useAccountRoles(selectedAccountId);
 
   const [step, setStep] = useState<Step>('form');
   const [formData, setFormData] = useState<BulkAssignmentFormData>({
@@ -41,7 +51,24 @@ export default function DashboardPage() {
   });
   const [executionId, setExecutionId] = useState<string | null>(null);
 
-  const { roles, isLoading: rolesLoading, error: rolesError } = useAccountRoles();
+  // Auto-select first account when accounts load
+  useEffect(() => {
+    if (accounts.length > 0 && !selectedAccountId) {
+      setSelectedAccountId(accounts[0].id);
+    }
+  }, [accounts, selectedAccountId]);
+
+  // Reset form when account changes
+  const handleAccountChange = (accountId: string) => {
+    setSelectedAccountId(accountId);
+    setFormData({
+      selectedProjects: [],
+      userEmails: '',
+      selectedMembers: [],
+      selectedRole: '',
+      accessLevel: 'user',
+    });
+  };
 
   const {
     preview: previewMutation,
@@ -195,6 +222,14 @@ export default function DashboardPage() {
           </div>
         </div>
       </header>
+
+      {/* Account Selector */}
+      <AccountSelector
+        accounts={accounts}
+        selectedAccountId={selectedAccountId}
+        onAccountChange={handleAccountChange}
+        isLoading={accountsLoading}
+      />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

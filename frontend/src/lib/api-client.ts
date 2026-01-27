@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosError } from 'axios';
 import {
   User,
+  Account,
   Project,
   Role,
   AccountMember,
@@ -62,11 +63,22 @@ class ApiClient {
   }
 
   // ============================================================================
+  // Accounts
+  // ============================================================================
+
+  async getAccounts(): Promise<{ accounts: Account[] }> {
+    const response = await this.client.get('/api/accounts');
+    return response.data;
+  }
+
+  // ============================================================================
   // Projects
   // ============================================================================
 
-  async getProjects(): Promise<{ projects: Project[] }> {
-    const response = await this.client.get('/api/projects');
+  async getProjects(accountId?: string): Promise<{ projects: Project[] }> {
+    const response = await this.client.get('/api/projects', {
+      params: accountId ? { accountId } : undefined,
+    });
     return response.data;
   }
 
@@ -89,13 +101,17 @@ class ApiClient {
   // Account
   // ============================================================================
 
-  async getAccountMembers(): Promise<{ members: AccountMember[] }> {
-    const response = await this.client.get('/api/account/members');
+  async getAccountMembers(accountId?: string): Promise<{ members: AccountMember[] }> {
+    const response = await this.client.get('/api/account/members', {
+      params: accountId ? { accountId } : undefined,
+    });
     return response.data;
   }
 
-  async getAccountRoles(): Promise<{ roles: Role[] }> {
-    const response = await this.client.get('/api/account/roles');
+  async getAccountRoles(accountId?: string): Promise<{ roles: Role[] }> {
+    const response = await this.client.get('/api/account/roles', {
+      params: accountId ? { accountId } : undefined,
+    });
     return response.data;
   }
 

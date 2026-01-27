@@ -9,6 +9,12 @@ export interface User {
   isAccountAdmin: boolean;
 }
 
+export interface Account {
+  id: string;
+  name: string;
+  region: string;
+}
+
 export interface Project {
   id: string;
   name: string;

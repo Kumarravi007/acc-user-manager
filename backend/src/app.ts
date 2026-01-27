@@ -150,6 +150,13 @@ app.post(
   authController.logout.bind(authController)
 );
 
+// Accounts routes
+app.get(
+  '/api/accounts',
+  requireAuth,
+  projectsController.getAccounts.bind(projectsController)
+);
+
 // Projects routes
 app.get(
   '/api/projects',

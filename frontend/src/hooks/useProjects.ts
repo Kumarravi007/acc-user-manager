@@ -1,10 +1,26 @@
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '@/lib/api-client';
 
-export function useProjects() {
+export function useAccounts() {
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['projects'],
-    queryFn: () => apiClient.getProjects(),
+    queryKey: ['accounts'],
+    queryFn: () => apiClient.getAccounts(),
+    staleTime: 10 * 60 * 1000, // 10 minutes
+  });
+
+  return {
+    accounts: data?.accounts || [],
+    isLoading,
+    error,
+    refetch,
+  };
+}
+
+export function useProjects(accountId: string | null) {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['projects', accountId],
+    queryFn: () => apiClient.getProjects(accountId || undefined),
+    enabled: !!accountId,
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
 
@@ -45,10 +61,11 @@ export function useProjectRoles(projectId: string | null) {
   };
 }
 
-export function useAccountMembers() {
+export function useAccountMembers(accountId: string | null) {
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['accountMembers'],
-    queryFn: () => apiClient.getAccountMembers(),
+    queryKey: ['accountMembers', accountId],
+    queryFn: () => apiClient.getAccountMembers(accountId || undefined),
+    enabled: !!accountId,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
@@ -60,10 +77,11 @@ export function useAccountMembers() {
   };
 }
 
-export function useAccountRoles() {
+export function useAccountRoles(accountId: string | null) {
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['accountRoles'],
-    queryFn: () => apiClient.getAccountRoles(),
+    queryKey: ['accountRoles', accountId],
+    queryFn: () => apiClient.getAccountRoles(accountId || undefined),
+    enabled: !!accountId,
     staleTime: 10 * 60 * 1000, // 10 minutes
   });
 
