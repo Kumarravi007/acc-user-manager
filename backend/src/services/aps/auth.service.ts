@@ -281,6 +281,54 @@ export class APSAuthService {
     }
   }
 
+  // Cache for 2-legged token
+  private twoLeggedToken: { token: string; expiresAt: Date } | null = null;
+
+  /**
+   * Get 2-legged OAuth token (client credentials flow)
+   * This is required for Admin APIs like account users and roles
+   * @returns Access token for Admin API calls
+   */
+  async getTwoLeggedToken(): Promise<string> {
+    // Check if we have a valid cached token
+    if (this.twoLeggedToken && this.twoLeggedToken.expiresAt > new Date()) {
+      return this.twoLeggedToken.token;
+    }
+
+    try {
+      const response = await axios.post<APSTokenResponse>(
+        `${this.baseUrl}/authentication/v2/token`,
+        new URLSearchParams({
+          grant_type: 'client_credentials',
+          scope: 'account:read account:write data:read',
+        }),
+        {
+          auth: {
+            username: this.clientId,
+            password: this.clientSecret,
+          },
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        }
+      );
+
+      // Cache the token with expiration (subtract 5 minutes for safety margin)
+      const expiresAt = new Date(Date.now() + (response.data.expires_in - 300) * 1000);
+      this.twoLeggedToken = {
+        token: response.data.access_token,
+        expiresAt,
+      };
+
+      logger.info('Successfully obtained 2-legged token for Admin API');
+      return response.data.access_token;
+    } catch (error) {
+      logger.error('Failed to get 2-legged token', { error });
+      this.handleAuthError(error, 'Failed to get 2-legged token');
+      throw error;
+    }
+  }
+
   /**
    * Revoke access token (logout)
    * @param accessToken - Token to revoke

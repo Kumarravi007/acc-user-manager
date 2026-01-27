@@ -10,6 +10,7 @@ import {
 } from '../../types';
 import logger from '../../utils/logger';
 import { wait } from '../../utils/helpers';
+import apsAuthService from './auth.service';
 
 /**
  * APS Projects and Users Management Service
@@ -61,12 +62,13 @@ export class APSProjectsService {
 
   /**
    * Get all users/members in an account from ACC Admin API
-   * @param accessToken - Valid access token
+   * Uses 2-legged OAuth (client credentials) which is required for Admin APIs
+   * @param _accessToken - Not used, kept for API compatibility
    * @param accountId - ACC Account ID
    * @returns Array of account members
    */
   async getAccountUsers(
-    accessToken: string,
+    _accessToken: string,
     accountId: string
   ): Promise<Array<{
     id: string;
@@ -92,9 +94,13 @@ export class APSProjectsService {
     logger.info(`Fetching account users for account ${accountId}`, {
       endpoint: `/hq/v1/accounts/${accountId}/users`,
       accountIdLength: accountId.length,
+      authType: '2-legged',
     });
 
     try {
+      // Get 2-legged token for Admin API (required for account-level operations)
+      const twoLeggedToken = await apsAuthService.getTwoLeggedToken();
+
       while (true) {
         // Use HQ API endpoint to fetch account users
         // Endpoint: https://developer.api.autodesk.com/hq/v1/accounts/:account_id/users
@@ -112,7 +118,7 @@ export class APSProjectsService {
         }>(
           'get',
           `/hq/v1/accounts/${accountId}/users`,
-          accessToken,
+          twoLeggedToken,
           { params: { limit, offset } }
         );
 
@@ -335,23 +341,29 @@ export class APSProjectsService {
 
   /**
    * Get available roles in a project
-   * @param accessToken - Valid access token
+   * Uses 2-legged OAuth for Admin API access
+   * @param _accessToken - Not used, kept for API compatibility
    * @param accountId - ACC Account ID
    * @param projectId - Project ID
    * @returns Array of roles
    */
   async getProjectRoles(
-    accessToken: string,
+    _accessToken: string,
     accountId: string,
     projectId: string
   ): Promise<APSRole[]> {
     try {
-      logger.info(`Fetching roles for project ${projectId} in account ${accountId}`);
+      logger.info(`Fetching roles for project ${projectId} in account ${accountId}`, {
+        authType: '2-legged',
+      });
+
+      // Get 2-legged token for Admin API
+      const twoLeggedToken = await apsAuthService.getTwoLeggedToken();
 
       const response = await this.makeRequest<APSRole[]>(
         'get',
         `/hq/v1/accounts/${accountId}/projects/${projectId}/industry_roles`,
-        accessToken
+        twoLeggedToken
       );
 
       logger.info(`Retrieved ${Array.isArray(response) ? response.length : 0} roles for project ${projectId}`);
@@ -373,23 +385,28 @@ export class APSProjectsService {
 
   /**
    * Get available roles at account level (from Account Admin > Roles)
-   * Uses the HQ API endpoint which works for both BIM 360 and ACC
-   * @param accessToken - Valid access token
+   * Uses 2-legged OAuth for Admin API access
+   * @param _accessToken - Not used, kept for API compatibility
    * @param accountId - ACC Account ID
    * @returns Array of account-level industry roles
    */
   async getAccountRoles(
-    accessToken: string,
+    _accessToken: string,
     accountId: string
   ): Promise<APSRole[]> {
     try {
-      logger.info(`Fetching account roles for account ${accountId}`);
+      logger.info(`Fetching account roles for account ${accountId}`, {
+        authType: '2-legged',
+      });
+
+      // Get 2-legged token for Admin API
+      const twoLeggedToken = await apsAuthService.getTwoLeggedToken();
 
       // Use HQ API - this endpoint returns account-level roles
       const response = await this.makeRequest<APSRole[] | { results?: APSRole[] }>(
         'get',
         `/hq/v1/accounts/${accountId}/industry_roles`,
-        accessToken
+        twoLeggedToken
       );
 
       // Handle both array and object response formats
