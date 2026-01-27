@@ -13,6 +13,9 @@ interface MemberSelectorProps {
   selectedMembers: string[];
   onSelectionChange: (memberIds: string[]) => void;
   isLoading?: boolean;
+  error?: Error | null;
+  manualEmails?: string;
+  onManualEmailsChange?: (emails: string) => void;
 }
 
 export default function MemberSelector({
@@ -20,6 +23,9 @@ export default function MemberSelector({
   selectedMembers,
   onSelectionChange,
   isLoading = false,
+  error = null,
+  manualEmails = '',
+  onManualEmailsChange,
 }: MemberSelectorProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -119,6 +125,23 @@ export default function MemberSelector({
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">
                 Loading members...
+              </div>
+            ) : error ? (
+              <div className="space-y-4">
+                <div className="text-center py-4 text-muted-foreground">
+                  <p className="text-sm text-amber-600 mb-2">
+                    Unable to load account members. You may not have Account Admin access.
+                  </p>
+                  <p className="text-xs">
+                    Enter email addresses manually below (one per line or comma-separated):
+                  </p>
+                </div>
+                <textarea
+                  value={manualEmails}
+                  onChange={(e) => onManualEmailsChange?.(e.target.value)}
+                  placeholder="user1@example.com&#10;user2@example.com"
+                  className="w-full h-32 p-3 text-sm border rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                />
               </div>
             ) : filteredMembers.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">

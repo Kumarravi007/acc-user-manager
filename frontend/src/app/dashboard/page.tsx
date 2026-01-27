@@ -66,12 +66,23 @@ export default function DashboardPage() {
     }
   }, [authLoading, user, router]);
 
-  // Get selected member emails for API calls
+  // Get selected member emails for API calls (includes manual emails as fallback)
   const selectedMemberEmails = useMemo(() => {
-    return members
+    // Get emails from selected members
+    const memberEmails = members
       .filter((m) => formData.selectedMembers.includes(m.id))
       .map((m) => m.email);
-  }, [members, formData.selectedMembers]);
+
+    // If no members selected but manual emails provided, use those
+    if (memberEmails.length === 0 && formData.userEmails.trim()) {
+      return formData.userEmails
+        .split(/[,\n]/)
+        .map((e) => e.trim())
+        .filter((e) => e.length > 0 && e.includes('@'));
+    }
+
+    return memberEmails;
+  }, [members, formData.selectedMembers, formData.userEmails]);
 
   const handlePreview = async () => {
     if (formData.selectedProjects.length === 0) {
@@ -79,8 +90,8 @@ export default function DashboardPage() {
       return;
     }
 
-    if (formData.selectedMembers.length === 0) {
-      alert('Please select at least one member');
+    if (selectedMemberEmails.length === 0) {
+      alert('Please select at least one member or enter email addresses');
       return;
     }
 
@@ -274,6 +285,11 @@ export default function DashboardPage() {
                     setFormData({ ...formData, selectedMembers: selected })
                   }
                   isLoading={membersLoading}
+                  error={membersError as Error | null}
+                  manualEmails={formData.userEmails}
+                  onManualEmailsChange={(emails) =>
+                    setFormData({ ...formData, userEmails: emails })
+                  }
                 />
 
                 <RoleSelector
