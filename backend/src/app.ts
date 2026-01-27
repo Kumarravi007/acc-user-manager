@@ -15,6 +15,9 @@ import authController from './controllers/auth.controller';
 import projectsController from './controllers/projects.controller';
 import bulkOperationsController from './controllers/bulk-operations.controller';
 
+// Worker - import to start job processing in same process
+import './workers/job-processor';
+
 const app: Application = express();
 
 // Trust proxy - required for secure cookies behind Railway's proxy
