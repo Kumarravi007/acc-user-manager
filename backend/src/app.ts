@@ -172,6 +172,13 @@ app.get(
   projectsController.getProjectRoles.bind(projectsController)
 );
 
+// Account routes
+app.get(
+  '/api/account/members',
+  requireAuth,
+  projectsController.getAccountMembers.bind(projectsController)
+);
+
 // Bulk operations routes
 app.post(
   '/api/bulk/preview',

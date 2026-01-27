@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { LogOut, History, Plus, Loader2 } from 'lucide-react';
+import { LogOut, History, Plus } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useProjects, useProjectRoles } from '@/hooks/useProjects';
+import { useProjects, useProjectRoles, useAccountMembers } from '@/hooks/useProjects';
 import {
   useBulkPreview,
   useBulkAssignment,
@@ -14,12 +14,12 @@ import Button from '@/components/ui/Button';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/Alert';
 import Spinner from '@/components/ui/Spinner';
 import ProjectSelector from '@/components/ProjectSelector';
-import UserEmailInput from '@/components/UserEmailInput';
+import MemberSelector from '@/components/MemberSelector';
 import RoleSelector from '@/components/RoleSelector';
+import AccessLevelSelector from '@/components/AccessLevelSelector';
 import PreviewResults from '@/components/PreviewResults';
 import ExecutionStatus from '@/components/ExecutionStatus';
-import { validateEmails } from '@/lib/utils';
-import type { BulkAssignmentFormData } from '@/types';
+import type { BulkAssignmentFormData, AccessLevel } from '@/types';
 
 type Step = 'form' | 'preview' | 'executing';
 
@@ -28,12 +28,16 @@ export default function DashboardPage() {
   const { user, isLoading: authLoading, logout } = useAuth();
   const { projects, isLoading: projectsLoading, error: projectsError } =
     useProjects();
+  const { members, isLoading: membersLoading, error: membersError } =
+    useAccountMembers();
 
   const [step, setStep] = useState<Step>('form');
   const [formData, setFormData] = useState<BulkAssignmentFormData>({
     selectedProjects: [],
     userEmails: '',
+    selectedMembers: [],
     selectedRole: '',
+    accessLevel: 'user',
   });
   const [executionId, setExecutionId] = useState<string | null>(null);
 
@@ -64,16 +68,21 @@ export default function DashboardPage() {
     }
   }, [authLoading, user, router]);
 
-  const handlePreview = async () => {
-    const { valid, invalid } = validateEmails(formData.userEmails);
+  // Get selected member emails for API calls
+  const selectedMemberEmails = useMemo(() => {
+    return members
+      .filter((m) => formData.selectedMembers.includes(m.id))
+      .map((m) => m.email);
+  }, [members, formData.selectedMembers]);
 
+  const handlePreview = async () => {
     if (formData.selectedProjects.length === 0) {
       alert('Please select at least one project');
       return;
     }
 
-    if (valid.length === 0) {
-      alert('Please enter at least one valid email address');
+    if (formData.selectedMembers.length === 0) {
+      alert('Please select at least one member');
       return;
     }
 
@@ -84,7 +93,7 @@ export default function DashboardPage() {
 
     try {
       await previewMutation({
-        userEmails: valid,
+        userEmails: selectedMemberEmails,
         projectIds: formData.selectedProjects,
       });
       setStep('preview');
@@ -94,11 +103,9 @@ export default function DashboardPage() {
   };
 
   const handleConfirmExecution = async () => {
-    const { valid } = validateEmails(formData.userEmails);
-
     try {
       const response = await executeMutation({
-        userEmails: valid,
+        userEmails: selectedMemberEmails,
         projectIds: formData.selectedProjects,
         role: formData.selectedRole,
       });
@@ -121,7 +128,9 @@ export default function DashboardPage() {
     setFormData({
       selectedProjects: [],
       userEmails: '',
+      selectedMembers: [],
       selectedRole: '',
+      accessLevel: 'user',
     });
     resetPreview();
   };
@@ -190,6 +199,15 @@ export default function DashboardPage() {
           </Alert>
         )}
 
+        {membersError && (
+          <Alert variant="error" className="mb-6">
+            <AlertTitle>Failed to load members</AlertTitle>
+            <AlertDescription>
+              {membersError.message || 'Please try again later'}
+            </AlertDescription>
+          </Alert>
+        )}
+
         {previewError && (
           <Alert variant="error" className="mb-6">
             <AlertTitle>Preview Failed</AlertTitle>
@@ -214,10 +232,10 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-semibold">
-                  Add Users to Projects
+                  Add Members to Projects
                 </h2>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Select projects, enter user emails, and assign a role
+                  Select projects, choose members, assign a role and access level
                 </p>
               </div>
               <Button
@@ -225,7 +243,7 @@ export default function DashboardPage() {
                 onClick={handlePreview}
                 disabled={
                   formData.selectedProjects.length === 0 ||
-                  !formData.userEmails.trim() ||
+                  formData.selectedMembers.length === 0 ||
                   !formData.selectedRole ||
                   isPreviewLoading
                 }
@@ -251,11 +269,13 @@ export default function DashboardPage() {
 
               {/* Right Column */}
               <div className="space-y-6">
-                <UserEmailInput
-                  value={formData.userEmails}
-                  onChange={(value) =>
-                    setFormData({ ...formData, userEmails: value })
+                <MemberSelector
+                  members={members}
+                  selectedMembers={formData.selectedMembers}
+                  onSelectionChange={(selected) =>
+                    setFormData({ ...formData, selectedMembers: selected })
                   }
+                  isLoading={membersLoading}
                 />
 
                 <RoleSelector
@@ -265,6 +285,13 @@ export default function DashboardPage() {
                     setFormData({ ...formData, selectedRole: roleId })
                   }
                   isLoading={rolesLoading}
+                />
+
+                <AccessLevelSelector
+                  selectedLevel={formData.accessLevel}
+                  onLevelChange={(level) =>
+                    setFormData({ ...formData, accessLevel: level })
+                  }
                 />
               </div>
             </div>

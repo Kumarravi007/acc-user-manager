@@ -30,6 +30,24 @@ export interface Role {
   description?: string;
 }
 
+export interface AccountMember {
+  id: string;
+  email: string;
+  name: string;
+  firstName?: string;
+  lastName?: string;
+  companyName?: string;
+}
+
+// Access levels for ACC project users
+export type AccessLevel = 'admin' | 'user';
+
+export interface AccessLevelOption {
+  value: AccessLevel;
+  label: string;
+  description: string;
+}
+
 export interface PreviewResult {
   userEmail: string;
   projectId: string;
@@ -135,7 +153,9 @@ export interface PreviewResponse {
 export interface BulkAssignmentFormData {
   selectedProjects: string[];
   userEmails: string;
+  selectedMembers: string[]; // Member IDs from ACC
   selectedRole: string;
+  accessLevel: AccessLevel;
 }
 
 export interface AlertMessage {

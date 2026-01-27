@@ -211,6 +211,67 @@ export class ProjectsController {
       res.status(500).json({ error: 'Failed to retrieve project roles' });
     }
   }
+
+  /**
+   * Get all members in the account (from ACC Admin)
+   * GET /api/account/members
+   */
+  async getAccountMembers(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.session.userId!;
+      const db = getDb();
+
+      // Get valid access token (refreshes if expired)
+      let accessToken: string;
+      let accountId: string | null;
+      try {
+        const tokenResult = await getValidAccessToken(db, userId);
+        accessToken = tokenResult.accessToken;
+        accountId = tokenResult.accountId;
+      } catch (tokenError) {
+        logger.error('Token error in getAccountMembers', {
+          userId,
+          error: tokenError instanceof Error ? tokenError.message : String(tokenError),
+        });
+        res.status(401).json({ error: 'Session expired. Please log in again.' });
+        return;
+      }
+
+      if (!accountId) {
+        res.status(400).json({
+          error: 'Account ID not set. Please contact administrator.',
+        });
+        return;
+      }
+
+      // Fetch account members from APS
+      const members = await apsProjectsService.getAccountUsers(
+        accessToken,
+        accountId
+      );
+
+      // Filter to only active members
+      const activeMembers = members.filter(m => m.status === 'active');
+
+      res.json({
+        members: activeMembers.map((m) => ({
+          id: m.id,
+          email: m.email,
+          name: m.name,
+          firstName: m.firstName,
+          lastName: m.lastName,
+          companyName: m.companyName,
+        })),
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error('Failed to get account members', {
+        errorMessage,
+        errorName: error instanceof Error ? error.name : 'Unknown',
+      });
+      res.status(500).json({ error: 'Failed to retrieve account members' });
+    }
+  }
 }
 
 export default new ProjectsController();

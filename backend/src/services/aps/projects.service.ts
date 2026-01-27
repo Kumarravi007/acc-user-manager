@@ -60,6 +60,90 @@ export class APSProjectsService {
   }
 
   /**
+   * Get all users/members in an account from ACC Admin API
+   * @param accessToken - Valid access token
+   * @param accountId - ACC Account ID
+   * @returns Array of account members
+   */
+  async getAccountUsers(
+    accessToken: string,
+    accountId: string
+  ): Promise<Array<{
+    id: string;
+    email: string;
+    name: string;
+    firstName?: string;
+    lastName?: string;
+    status: string;
+    companyName?: string;
+  }>> {
+    const allUsers: Array<{
+      id: string;
+      email: string;
+      name: string;
+      firstName?: string;
+      lastName?: string;
+      status: string;
+      companyName?: string;
+    }> = [];
+    let offset = 0;
+    const limit = 100;
+
+    try {
+      while (true) {
+        const response = await this.makeRequest<{
+          results: Array<{
+            id: string;
+            email: string;
+            name: string;
+            first_name?: string;
+            last_name?: string;
+            status: string;
+            company_name?: string;
+          }>;
+        }>(
+          'get',
+          `/hq/v1/accounts/${accountId}/users`,
+          accessToken,
+          { params: { limit, offset } }
+        );
+
+        const users = (response.results || []).map(u => ({
+          id: u.id,
+          email: u.email,
+          name: u.name || `${u.first_name || ''} ${u.last_name || ''}`.trim(),
+          firstName: u.first_name,
+          lastName: u.last_name,
+          status: u.status,
+          companyName: u.company_name,
+        }));
+
+        allUsers.push(...users);
+
+        if (users.length < limit) {
+          break;
+        }
+
+        offset += limit;
+      }
+
+      logger.info(`Retrieved ${allUsers.length} users for account ${accountId}`);
+      return allUsers;
+    } catch (error) {
+      const errorDetails: Record<string, unknown> = { accountId };
+      if (error instanceof APSError) {
+        errorDetails.statusCode = error.statusCode;
+        errorDetails.errorCode = error.errorCode;
+        errorDetails.message = error.message;
+      } else if (error instanceof Error) {
+        errorDetails.message = error.message;
+      }
+      logger.error('Failed to get account users', errorDetails);
+      throw error;
+    }
+  }
+
+  /**
    * Get all projects for an account using Data Management API
    * @param accessToken - Valid access token
    * @param accountId - ACC Account ID
@@ -97,13 +181,20 @@ export class APSProjectsService {
           accessToken
         );
 
-        const projects = (response.data || []).map((p: DMProjectResponse['data'][0]) => ({
-          id: p.id.replace('b.', ''), // Remove "b." prefix from project ID
-          name: p.attributes.name,
-          accountId: accountId,
-          status: 'active' as const,
-          platform: p.attributes.extension?.data?.projectType || 'ACC',
-        }));
+        const projects = (response.data || [])
+          // Filter out template projects
+          .filter((p: DMProjectResponse['data'][0]) => {
+            const scopes = p.attributes.scopes || [];
+            const isTemplate = scopes.some(s => s.toLowerCase().includes('template'));
+            return !isTemplate;
+          })
+          .map((p: DMProjectResponse['data'][0]) => ({
+            id: p.id.replace('b.', ''), // Remove "b." prefix from project ID
+            name: p.attributes.name,
+            accountId: accountId,
+            status: 'active' as const,
+            platform: p.attributes.extension?.data?.projectType || 'ACC',
+          }));
 
         allProjects.push(...projects);
 

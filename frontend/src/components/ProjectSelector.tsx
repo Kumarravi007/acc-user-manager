@@ -8,6 +8,53 @@ import Input from './ui/Input';
 import Badge from './ui/Badge';
 import { cn } from '@/lib/utils';
 
+// ACC (Autodesk Construction Cloud) Icon
+const ACCIcon = ({ className }: { className?: string }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    className={cn('h-5 w-5', className)}
+    aria-label="Autodesk Construction Cloud"
+  >
+    <rect width="24" height="24" rx="4" fill="#1858A8" />
+    <path
+      d="M12 6L6 18h3l1-2h4l1 2h3L12 6zm0 5l1.5 3h-3L12 11z"
+      fill="white"
+    />
+  </svg>
+);
+
+// BIM 360 Icon
+const BIM360Icon = ({ className }: { className?: string }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    className={cn('h-5 w-5', className)}
+    aria-label="BIM 360"
+  >
+    <rect width="24" height="24" rx="4" fill="#FF6B00" />
+    <path
+      d="M7 8h4v2H9v1h2v2H9v1h2v2H7V8zm6 0h4v2h-2v4h2v2h-4V8z"
+      fill="white"
+    />
+  </svg>
+);
+
+// Get platform icon based on project type
+const PlatformIcon = ({ platform }: { platform?: string }) => {
+  if (!platform) return null;
+
+  const platformLower = platform.toLowerCase();
+  if (platformLower.includes('acc') || platformLower === 'autodesk.construction.cloud') {
+    return <ACCIcon />;
+  }
+  if (platformLower.includes('bim') || platformLower.includes('360')) {
+    return <BIM360Icon />;
+  }
+  // Default to ACC for unknown platforms
+  return <ACCIcon />;
+};
+
 interface ProjectSelectorProps {
   projects: Project[];
   selectedProjects: string[];
@@ -27,10 +74,8 @@ export default function ProjectSelector({
     if (!searchQuery) return projects;
 
     const query = searchQuery.toLowerCase();
-    return projects.filter(
-      (project) =>
-        project.name.toLowerCase().includes(query) ||
-        project.id.toLowerCase().includes(query)
+    return projects.filter((project) =>
+      project.name.toLowerCase().includes(query)
     );
   }, [projects, searchQuery]);
 
@@ -139,17 +184,10 @@ export default function ProjectSelector({
                         <Square className="h-5 w-5 text-muted-foreground" />
                       )}
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 flex items-center gap-3">
+                      <PlatformIcon platform={project.platform} />
                       <div className="font-medium truncate">
                         {project.name}
-                      </div>
-                      <div className="text-sm text-muted-foreground mt-0.5 flex items-center gap-2">
-                        <span className="truncate">{project.id}</span>
-                        {project.platform && (
-                          <Badge variant="secondary" className="text-xs">
-                            {project.platform}
-                          </Badge>
-                        )}
                       </div>
                     </div>
                   </div>

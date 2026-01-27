@@ -3,6 +3,7 @@ import {
   User,
   Project,
   Role,
+  AccountMember,
   PreviewRequest,
   PreviewResponse,
   BulkAssignmentRequest,
@@ -81,6 +82,15 @@ class ApiClient {
 
   async getProjectRoles(projectId: string): Promise<{ roles: Role[] }> {
     const response = await this.client.get(`/api/projects/${projectId}/roles`);
+    return response.data;
+  }
+
+  // ============================================================================
+  // Account
+  // ============================================================================
+
+  async getAccountMembers(): Promise<{ members: AccountMember[] }> {
+    const response = await this.client.get('/api/account/members');
     return response.data;
   }
 

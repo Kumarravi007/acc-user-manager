@@ -44,3 +44,18 @@ export function useProjectRoles(projectId: string | null) {
     error,
   };
 }
+
+export function useAccountMembers() {
+  const { data, isLoading, error, refetch } = useQuery({
+    queryKey: ['accountMembers'],
+    queryFn: () => apiClient.getAccountMembers(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
+
+  return {
+    members: data?.members || [],
+    isLoading,
+    error,
+    refetch,
+  };
+}
