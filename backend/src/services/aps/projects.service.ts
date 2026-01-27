@@ -349,7 +349,7 @@ export class APSProjectsService {
 
   /**
    * Get users in a project
-   * Uses 2-legged OAuth for Admin API access
+   * Uses 2-legged OAuth for ACC Admin API access
    * @param _accessToken - Not used, kept for API compatibility
    * @param accountId - ACC Account ID
    * @param projectId - Project ID
@@ -368,16 +368,46 @@ export class APSProjectsService {
       // Get 2-legged token for Admin API (required for project users endpoint)
       const twoLeggedToken = await apsAuthService.getTwoLeggedToken();
 
+      // Use ACC Admin API endpoint (more reliable than HQ API for ACC projects)
+      // Endpoint: /construction/admin/v1/projects/{projectId}/users
       while (true) {
-        const response = await this.makeRequest<APSProjectUser[] | { results: APSProjectUser[] }>(
+        const response = await this.makeRequest<{
+          pagination?: { limit: number; offset: number; totalResults: number };
+          results: Array<{
+            id: string;
+            email: string;
+            name: string;
+            firstName?: string;
+            lastName?: string;
+            autodeskId?: string;
+            companyId?: string;
+            companyName?: string;
+            roleIds?: string[];
+            roles?: Array<{ id: string; name: string }>;
+            accessLevels?: { accountAdmin?: boolean; projectAdmin?: boolean };
+            products?: Array<{ key: string; access: string }>;
+          }>;
+        }>(
           'get',
-          `/hq/v1/accounts/${accountId}/projects/${projectId}/users`,
+          `/construction/admin/v1/projects/${projectId}/users`,
           twoLeggedToken,
           { params: { limit, offset } }
         );
 
-        // Handle both array and object response formats
-        const users = Array.isArray(response) ? response : (response.results || []);
+        const rawUsers = response.results || [];
+
+        // Map to APSProjectUser format
+        const users: APSProjectUser[] = rawUsers.map(u => ({
+          id: u.id,
+          email: u.email,
+          name: u.name || `${u.firstName || ''} ${u.lastName || ''}`.trim(),
+          autodeskId: u.autodeskId || '',
+          companyId: u.companyId,
+          companyName: u.companyName,
+          roleIds: u.roleIds || (u.roles?.map(r => r.id) || []),
+          products: u.products || [],
+        }));
+
         allUsers.push(...users);
 
         if (users.length < limit) {
