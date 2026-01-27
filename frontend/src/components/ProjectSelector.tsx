@@ -8,7 +8,7 @@ import Input from './ui/Input';
 import Badge from './ui/Badge';
 import { cn } from '@/lib/utils';
 
-// ACC (Autodesk Construction Cloud) Icon - Teal globe with grid lines
+// ACC (Autodesk Construction Cloud) Icon - Blue globe with network grid
 const ACCIcon = ({ className }: { className?: string }) => (
   <svg
     viewBox="0 0 24 24"
@@ -16,19 +16,21 @@ const ACCIcon = ({ className }: { className?: string }) => (
     className={cn('h-5 w-5', className)}
     aria-label="Autodesk Construction Cloud"
   >
-    <rect width="24" height="24" rx="4" fill="#0696D7" />
-    {/* Globe with grid lines */}
-    <circle cx="12" cy="12" r="6" stroke="white" strokeWidth="1.5" fill="none" />
-    {/* Horizontal lines */}
-    <path d="M6 12h12" stroke="white" strokeWidth="1.5" />
-    <path d="M7.5 9h9" stroke="white" strokeWidth="1" />
-    <path d="M7.5 15h9" stroke="white" strokeWidth="1" />
-    {/* Vertical curve (meridian) */}
-    <ellipse cx="12" cy="12" rx="3" ry="6" stroke="white" strokeWidth="1.5" fill="none" />
+    {/* Blue globe with intersecting arcs */}
+    <circle cx="12" cy="12" r="10" fill="#1858A8" />
+    {/* Outer circle */}
+    <circle cx="12" cy="12" r="7" stroke="white" strokeWidth="1.2" fill="none" />
+    {/* Horizontal arc */}
+    <ellipse cx="12" cy="12" rx="7" ry="3" stroke="white" strokeWidth="1.2" fill="none" />
+    {/* Vertical arc */}
+    <ellipse cx="12" cy="12" rx="3" ry="7" stroke="white" strokeWidth="1.2" fill="none" />
+    {/* Diagonal arcs for network effect */}
+    <path d="M5.5 8.5C7.5 10 9.5 11 12 11C14.5 11 16.5 10 18.5 8.5" stroke="white" strokeWidth="1" fill="none" />
+    <path d="M5.5 15.5C7.5 14 9.5 13 12 13C14.5 13 16.5 14 18.5 15.5" stroke="white" strokeWidth="1" fill="none" />
   </svg>
 );
 
-// BIM 360 Icon - Orange with white "B"
+// BIM 360 Icon - Blue "B" letter
 const BIM360Icon = ({ className }: { className?: string }) => (
   <svg
     viewBox="0 0 24 24"
@@ -36,11 +38,10 @@ const BIM360Icon = ({ className }: { className?: string }) => (
     className={cn('h-5 w-5', className)}
     aria-label="BIM 360"
   >
-    <rect width="24" height="24" rx="4" fill="#FF6B00" />
-    {/* Letter B */}
+    {/* Bold blue "B" */}
     <path
-      d="M8 6h5c2.2 0 4 1.3 4 3.5 0 1.2-.6 2.2-1.5 2.8.9.6 1.5 1.6 1.5 2.7 0 2.2-1.8 3.5-4 3.5H8V6zm2 2v3h3c1.1 0 2-.7 2-1.5S14.1 8 13 8h-3zm0 5v3h3c1.1 0 2-.7 2-1.5s-.9-1.5-2-1.5h-3z"
-      fill="white"
+      d="M5 3h8c3.3 0 6 2 6 5 0 1.8-.9 3.3-2.3 4.2C18.2 13.1 19 14.8 19 16.5c0 3-2.7 5-6 5H5V3zm4 3v5h4c1.7 0 3-1.1 3-2.5S14.7 6 13 6H9zm0 8v5h4c1.7 0 3-1.1 3-2.5S14.7 14 13 14H9z"
+      fill="#1858A8"
     />
   </svg>
 );
