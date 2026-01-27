@@ -22,9 +22,15 @@ export class BulkOperationsController {
    */
   async preview(req: Request, res: Response): Promise<void> {
     try {
-      const { userEmails, projectIds }: PreviewRequest = req.body;
+      const { userEmails, projectIds, accountId }: PreviewRequest = req.body;
       const userId = req.session.userId!;
       const db = getDb();
+
+      // Validate accountId
+      if (!accountId) {
+        res.status(400).json({ error: 'Account ID is required' });
+        return;
+      }
 
       // Validate emails
       const { valid, invalid } = validateEmails(userEmails);
@@ -39,7 +45,7 @@ export class BulkOperationsController {
 
       // Get user's access token
       const userRow = await db.query(
-        'SELECT access_token_encrypted, account_id FROM users WHERE id = $1',
+        'SELECT access_token_encrypted FROM users WHERE id = $1',
         [userId]
       );
 
@@ -49,7 +55,6 @@ export class BulkOperationsController {
       }
 
       const accessToken = decrypt(userRow.rows[0].access_token_encrypted);
-      const accountId = userRow.rows[0].account_id;
 
       // Check access for each user in each project
       const previewResults: PreviewResult[] = [];
@@ -121,12 +126,17 @@ export class BulkOperationsController {
    */
   async assign(req: Request, res: Response): Promise<void> {
     try {
-      const { userEmails, projectIds, role }: BulkUserAssignmentRequest =
+      const { userEmails, projectIds, role, accountId }: BulkUserAssignmentRequest =
         req.body;
       const userId = req.session.userId!;
       const db = getDb();
 
       // Validate inputs
+      if (!accountId) {
+        res.status(400).json({ error: 'Account ID is required' });
+        return;
+      }
+
       if (!userEmails || userEmails.length === 0) {
         res.status(400).json({ error: 'No user emails provided' });
         return;
@@ -155,7 +165,7 @@ export class BulkOperationsController {
 
       // Get user's access token
       const userRow = await db.query(
-        'SELECT access_token_encrypted, account_id FROM users WHERE id = $1',
+        'SELECT access_token_encrypted FROM users WHERE id = $1',
         [userId]
       );
 
@@ -165,7 +175,6 @@ export class BulkOperationsController {
       }
 
       const accessToken = decrypt(userRow.rows[0].access_token_encrypted);
-      const accountId = userRow.rows[0].account_id;
 
       // Create job execution record
       const executionId = uuidv4();

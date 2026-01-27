@@ -135,6 +135,7 @@ export interface BulkAssignmentRequest {
   userEmails: string[];
   projectIds: string[];
   role: string;
+  accountId: string;
 }
 
 export interface BulkAssignmentResponse {
@@ -147,6 +148,7 @@ export interface BulkAssignmentResponse {
 export interface PreviewRequest {
   userEmails: string[];
   projectIds: string[];
+  accountId: string;
 }
 
 export interface PreviewResponse {

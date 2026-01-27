@@ -209,11 +209,13 @@ export interface BulkUserAssignmentRequest {
   userEmails: string[];
   projectIds: string[];
   role: string;
+  accountId: string;
 }
 
 export interface PreviewRequest {
   userEmails: string[];
   projectIds: string[];
+  accountId: string;
 }
 
 export interface PreviewResult {

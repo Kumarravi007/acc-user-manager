@@ -127,10 +127,16 @@ export default function DashboardPage() {
       return;
     }
 
+    if (!selectedAccountId) {
+      alert('Please select an account');
+      return;
+    }
+
     try {
       await previewMutation({
         userEmails: selectedMemberEmails,
         projectIds: formData.selectedProjects,
+        accountId: selectedAccountId,
       });
       setStep('preview');
     } catch (error) {
@@ -139,11 +145,17 @@ export default function DashboardPage() {
   };
 
   const handleConfirmExecution = async () => {
+    if (!selectedAccountId) {
+      alert('Please select an account');
+      return;
+    }
+
     try {
       const response = await executeMutation({
         userEmails: selectedMemberEmails,
         projectIds: formData.selectedProjects,
         role: formData.selectedRole,
+        accountId: selectedAccountId,
       });
 
       setExecutionId(response.executionId);
