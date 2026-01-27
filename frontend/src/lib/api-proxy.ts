@@ -34,7 +34,12 @@ export async function proxyRequest(
       }
     }
 
-    const response = await fetch(`${BACKEND_URL}${path}`, fetchOptions);
+    // Preserve query parameters from the original request
+    const url = new URL(request.url);
+    const queryString = url.search; // includes the leading '?' if present
+    const fullPath = `${BACKEND_URL}${path}${queryString}`;
+
+    const response = await fetch(fullPath, fetchOptions);
 
     // Get response data
     let data;

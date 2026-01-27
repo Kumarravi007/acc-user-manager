@@ -288,31 +288,27 @@ export class ProjectsController {
         return;
       }
 
-      // First get projects to find one we can use to get roles
-      const projects = await apsProjectsService.getProjects(accessToken, accountId);
+      // Try to get account-level roles directly
+      try {
+        logger.info(`Getting account-level roles for account ${accountId}`);
+        const roles = await apsProjectsService.getAccountRoles(accessToken, accountId);
 
-      if (projects.length === 0) {
+        res.json({
+          roles: roles.map((r) => ({
+            id: r.id,
+            name: r.name,
+            description: r.description,
+          })),
+        });
+        return;
+      } catch (accountRolesError) {
+        logger.warn('Account-level roles failed, returning empty', {
+          error: accountRolesError instanceof Error ? accountRolesError.message : String(accountRolesError),
+        });
+        // If account-level fails, return empty array (UI will use defaults)
         res.json({ roles: [] });
         return;
       }
-
-      // Get roles from the first project (roles are shared across projects in an account)
-      const firstProjectId = projects[0].id;
-      logger.info(`Getting roles from project ${firstProjectId} for account ${accountId}`);
-
-      const roles = await apsProjectsService.getProjectRoles(
-        accessToken,
-        accountId,
-        firstProjectId
-      );
-
-      res.json({
-        roles: roles.map((r) => ({
-          id: r.id,
-          name: r.name,
-          description: r.description,
-        })),
-      });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       logger.error('Failed to get account roles', {

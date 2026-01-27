@@ -104,25 +104,61 @@ export class APSProjectsService {
       while (true) {
         // Use HQ API endpoint to fetch account users
         // Endpoint: https://developer.api.autodesk.com/hq/v1/accounts/:account_id/users
-        const response = await this.makeRequest<{
-          results?: Array<{
-            id: string;
-            email: string;
-            name: string;
-            first_name?: string;
-            last_name?: string;
-            status: string;
-            company_name?: string;
-          }>;
-          pagination?: { limit: number; offset: number; totalResults: number };
-        }>(
+        const response = await this.makeRequest<
+          | Array<{
+              id: string;
+              email: string;
+              name: string;
+              first_name?: string;
+              last_name?: string;
+              status: string;
+              company_name?: string;
+            }>
+          | {
+              results?: Array<{
+                id: string;
+                email: string;
+                name: string;
+                first_name?: string;
+                last_name?: string;
+                status: string;
+                company_name?: string;
+              }>;
+              pagination?: { limit: number; offset: number; totalResults: number };
+            }
+        >(
           'get',
           `/hq/v1/accounts/${accountId}/users`,
           twoLeggedToken,
           { params: { limit, offset } }
         );
 
-        const users = (response.results || []).map(u => ({
+        // Log raw response for debugging
+        logger.info(`Users API response type: ${Array.isArray(response) ? 'array' : 'object'}`, {
+          isArray: Array.isArray(response),
+          hasResults: !Array.isArray(response) && 'results' in response,
+          responseKeys: !Array.isArray(response) ? Object.keys(response) : 'N/A',
+          firstItem: Array.isArray(response) ? response[0] : (response as any).results?.[0],
+        });
+
+        // Handle both array response and {results: [...]} response
+        let rawUsers: Array<{
+          id: string;
+          email: string;
+          name: string;
+          first_name?: string;
+          last_name?: string;
+          status: string;
+          company_name?: string;
+        }>;
+
+        if (Array.isArray(response)) {
+          rawUsers = response;
+        } else {
+          rawUsers = response.results || [];
+        }
+
+        const users = rawUsers.map(u => ({
           id: u.id,
           email: u.email,
           name: u.name || `${u.first_name || ''} ${u.last_name || ''}`.trim(),
