@@ -93,8 +93,7 @@ export class APSProjectsService {
 
     try {
       while (true) {
-        // Try the newer ACC Admin API endpoint first
-        // This endpoint works for both BIM 360 and ACC accounts
+        // Use HQ API endpoint - works for both BIM 360 and ACC accounts
         const response = await this.makeRequest<{
           results?: Array<{
             id: string;
@@ -107,7 +106,7 @@ export class APSProjectsService {
           }>;
         }>(
           'get',
-          `/bim360/admin/v1/accounts/${accountId}/users`,
+          `/hq/v1/accounts/${accountId}/users`,
           accessToken,
           { params: { limit, offset } }
         );
@@ -362,6 +361,7 @@ export class APSProjectsService {
 
   /**
    * Get available roles at account level (from Account Admin > Roles)
+   * Uses the HQ API endpoint which works for both BIM 360 and ACC
    * @param accessToken - Valid access token
    * @param accountId - ACC Account ID
    * @returns Array of account-level industry roles
@@ -373,15 +373,26 @@ export class APSProjectsService {
     try {
       logger.info(`Fetching account roles for account ${accountId}`);
 
-      // Use the newer ACC Admin API endpoint
-      const response = await this.makeRequest<APSRole[]>(
+      // Use HQ API - this endpoint returns account-level roles
+      const response = await this.makeRequest<APSRole[] | { results?: APSRole[] }>(
         'get',
-        `/bim360/admin/v1/accounts/${accountId}/industry_roles`,
+        `/hq/v1/accounts/${accountId}/industry_roles`,
         accessToken
       );
 
-      logger.info(`Retrieved ${response.length} roles for account ${accountId}`);
-      return response;
+      // Handle both array and object response formats
+      let roles: APSRole[];
+      if (Array.isArray(response)) {
+        roles = response;
+      } else if (response && typeof response === 'object' && 'results' in response) {
+        roles = response.results || [];
+      } else {
+        logger.warn('Unexpected response format from industry_roles API', { response });
+        roles = [];
+      }
+
+      logger.info(`Retrieved ${roles.length} roles for account ${accountId}`);
+      return roles;
     } catch (error) {
       const errorDetails: Record<string, unknown> = { accountId };
       if (error instanceof APSError) {
