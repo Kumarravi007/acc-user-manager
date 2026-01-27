@@ -301,7 +301,7 @@ export class APSProjectsService {
   }
 
   /**
-   * Get project by ID
+   * Get project by ID using Data Management API
    * @param accessToken - Valid access token
    * @param accountId - ACC Account ID
    * @param projectId - Project ID
@@ -312,16 +312,37 @@ export class APSProjectsService {
     accountId: string,
     projectId: string
   ): Promise<APSProject> {
+    // Hub ID is "b." + accountId, Project ID also needs "b." prefix for Data Management API
+    const hubId = `b.${accountId}`;
+    const dmProjectId = projectId.startsWith('b.') ? projectId : `b.${projectId}`;
+
     try {
-      const response = await this.makeRequest<APSProject>(
+      // Use Data Management API to get project details (consistent with getProjects)
+      const response = await this.makeRequest<{
+        data: {
+          id: string;
+          attributes: {
+            name: string;
+            scopes: string[];
+            extension?: { data?: { projectType?: string } };
+          };
+        };
+      }>(
         'get',
-        `/hq/v1/accounts/${accountId}/projects/${projectId}`,
+        `/project/v1/hubs/${hubId}/projects/${dmProjectId}`,
         accessToken
       );
 
-      return response;
+      const project = response.data;
+      return {
+        id: project.id.replace('b.', ''), // Remove "b." prefix from project ID
+        name: project.attributes.name,
+        accountId: accountId,
+        status: 'active' as const,
+        platform: project.attributes.extension?.data?.projectType || 'ACC',
+      };
     } catch (error) {
-      logger.error('Failed to get project', { accountId, projectId, error });
+      logger.error('Failed to get project', { accountId, projectId, hubId, dmProjectId, error });
       throw error;
     }
   }
