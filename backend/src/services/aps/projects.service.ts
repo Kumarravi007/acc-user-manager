@@ -609,6 +609,7 @@ export class APSProjectsService {
       }
 
       // User doesn't exist, add them using ACC Admin API
+      // ACC Admin API expects: email, roleIds (optional), products (optional)
       const response = await this.makeRequest<{ id: string }>(
         'post',
         `/construction/admin/v1/projects/${projectId}/users`,
@@ -616,13 +617,13 @@ export class APSProjectsService {
         {
           data: {
             email,
+            roleIds: role ? [role] : undefined,
             products: [
               {
                 key: 'projectAdministration',
                 access: 'administrator',
               },
             ],
-            industryRoles: [role],
           },
         }
       );
@@ -657,7 +658,7 @@ export class APSProjectsService {
         twoLeggedToken,
         {
           data: {
-            industryRoles: [role],
+            roleIds: [role],
           },
         }
       );
@@ -777,8 +778,27 @@ export class APSProjectsService {
             requestId: error.response?.headers['x-ads-request-id'],
           });
 
+          // Extract error message - handle various API response formats
+          let errorMessage = error.message;
+          const responseData = error.response?.data;
+
+          if (responseData) {
+            if (responseData.detail) {
+              errorMessage = responseData.detail;
+            } else if (responseData.message) {
+              errorMessage = responseData.message;
+            } else if (responseData.title) {
+              errorMessage = responseData.title;
+            } else if (Array.isArray(responseData.errors) && responseData.errors.length > 0) {
+              // ACC Admin API returns errors array
+              errorMessage = responseData.errors.map((e: any) => e.detail || e.message || e.title || JSON.stringify(e)).join('; ');
+            } else if (typeof responseData === 'string') {
+              errorMessage = responseData;
+            }
+          }
+
           throw new APSError(
-            error.response?.data?.detail || error.response?.data?.message || error.response?.data?.title || error.message,
+            errorMessage,
             statusCode || 500,
             error.response?.data?.code || error.response?.data?.errorCode,
             error.response?.headers['x-ads-request-id']
