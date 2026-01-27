@@ -93,8 +93,10 @@ export class APSProjectsService {
 
     try {
       while (true) {
+        // Try the newer ACC Admin API endpoint first
+        // This endpoint works for both BIM 360 and ACC accounts
         const response = await this.makeRequest<{
-          results: Array<{
+          results?: Array<{
             id: string;
             email: string;
             name: string;
@@ -105,7 +107,7 @@ export class APSProjectsService {
           }>;
         }>(
           'get',
-          `/hq/v1/accounts/${accountId}/users`,
+          `/bim360/admin/v1/accounts/${accountId}/users`,
           accessToken,
           { params: { limit, offset } }
         );
@@ -371,9 +373,10 @@ export class APSProjectsService {
     try {
       logger.info(`Fetching account roles for account ${accountId}`);
 
+      // Use the newer ACC Admin API endpoint
       const response = await this.makeRequest<APSRole[]>(
         'get',
-        `/hq/v1/accounts/${accountId}/industry_roles`,
+        `/bim360/admin/v1/accounts/${accountId}/industry_roles`,
         accessToken
       );
 
