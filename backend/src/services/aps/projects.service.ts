@@ -343,20 +343,27 @@ export class APSProjectsService {
     projectId: string
   ): Promise<APSRole[]> {
     try {
+      logger.info(`Fetching roles for project ${projectId} in account ${accountId}`);
+
       const response = await this.makeRequest<APSRole[]>(
         'get',
         `/hq/v1/accounts/${accountId}/projects/${projectId}/industry_roles`,
         accessToken
       );
 
-      logger.info(`Retrieved roles for project ${projectId}`);
+      logger.info(`Retrieved ${Array.isArray(response) ? response.length : 0} roles for project ${projectId}`);
       return response;
     } catch (error) {
-      logger.error('Failed to get project roles', {
-        accountId,
-        projectId,
-        error,
-      });
+      const errorDetails: Record<string, unknown> = { accountId, projectId };
+      if (error instanceof APSError) {
+        errorDetails.statusCode = error.statusCode;
+        errorDetails.errorCode = error.errorCode;
+        errorDetails.message = error.message;
+        errorDetails.requestId = error.requestId;
+      } else if (error instanceof Error) {
+        errorDetails.message = error.message;
+      }
+      logger.error('Failed to get project roles', errorDetails);
       throw error;
     }
   }
