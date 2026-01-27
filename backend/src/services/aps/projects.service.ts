@@ -93,7 +93,8 @@ export class APSProjectsService {
 
     try {
       while (true) {
-        // Use HQ API endpoint - works for both BIM 360 and ACC accounts
+        // Use ACC Admin API endpoint
+        // Documentation: https://aps.autodesk.com/en/docs/acc/v1/reference/http/users-GET/
         const response = await this.makeRequest<{
           results?: Array<{
             id: string;
@@ -104,9 +105,10 @@ export class APSProjectsService {
             status: string;
             company_name?: string;
           }>;
+          pagination?: { limit: number; offset: number; totalResults: number };
         }>(
           'get',
-          `/hq/v1/accounts/${accountId}/users`,
+          `/construction/admin/v1/accounts/${accountId}/users`,
           accessToken,
           { params: { limit, offset } }
         );
