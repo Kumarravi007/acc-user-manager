@@ -214,7 +214,8 @@ export class ProjectsController {
   }
 
   /**
-   * Get available roles at account level (from ACC Admin > Roles)
+   * Get available roles (from ACC Admin > Roles)
+   * Uses project-level endpoint since account-level doesn't exist for ACC
    * GET /api/account/roles
    */
   async getAccountRoles(req: Request, res: Response): Promise<void> {
@@ -245,10 +246,22 @@ export class ProjectsController {
         return;
       }
 
-      // Fetch account roles from APS
-      const roles = await apsProjectsService.getAccountRoles(
+      // First get projects to find one we can use to get roles
+      const projects = await apsProjectsService.getProjects(accessToken, accountId);
+
+      if (projects.length === 0) {
+        res.json({ roles: [] });
+        return;
+      }
+
+      // Get roles from the first project (roles are shared across projects in an account)
+      const firstProjectId = projects[0].id;
+      logger.info(`Getting roles from project ${firstProjectId} for account ${accountId}`);
+
+      const roles = await apsProjectsService.getProjectRoles(
         accessToken,
-        accountId
+        accountId,
+        firstProjectId
       );
 
       res.json({
@@ -268,13 +281,13 @@ export class ProjectsController {
       if (error instanceof APSError) {
         if (error.statusCode === 403) {
           res.status(403).json({
-            error: 'You do not have permission to view account roles.',
+            error: 'You do not have permission to view roles.',
           });
           return;
         }
       }
 
-      res.status(500).json({ error: 'Failed to retrieve account roles' });
+      res.status(500).json({ error: 'Failed to retrieve roles' });
     }
   }
 
