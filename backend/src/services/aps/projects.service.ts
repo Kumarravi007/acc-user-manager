@@ -349,13 +349,14 @@ export class APSProjectsService {
 
   /**
    * Get users in a project
-   * @param accessToken - Valid access token
+   * Uses 2-legged OAuth for Admin API access
+   * @param _accessToken - Not used, kept for API compatibility
    * @param accountId - ACC Account ID
    * @param projectId - Project ID
    * @returns Array of project users
    */
   async getProjectUsers(
-    accessToken: string,
+    _accessToken: string,
     accountId: string,
     projectId: string
   ): Promise<APSProjectUser[]> {
@@ -364,15 +365,19 @@ export class APSProjectsService {
     const limit = 100;
 
     try {
+      // Get 2-legged token for Admin API (required for project users endpoint)
+      const twoLeggedToken = await apsAuthService.getTwoLeggedToken();
+
       while (true) {
-        const response = await this.makeRequest<{ results: APSProjectUser[] }>(
+        const response = await this.makeRequest<APSProjectUser[] | { results: APSProjectUser[] }>(
           'get',
           `/hq/v1/accounts/${accountId}/projects/${projectId}/users`,
-          accessToken,
+          twoLeggedToken,
           { params: { limit, offset } }
         );
 
-        const users = response.results || [];
+        // Handle both array and object response formats
+        const users = Array.isArray(response) ? response : (response.results || []);
         allUsers.push(...users);
 
         if (users.length < limit) {
