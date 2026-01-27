@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import apsProjectsService from '../services/aps/projects.service';
 import { getDb } from '../db';
 import { decrypt, getValidAccessToken } from '../utils/helpers';
+import { APSError } from '../types';
 import logger from '../utils/logger';
 
 /**
@@ -269,6 +270,23 @@ export class ProjectsController {
         errorMessage,
         errorName: error instanceof Error ? error.name : 'Unknown',
       });
+
+      // Return more specific error messages based on error type
+      if (error instanceof APSError) {
+        if (error.statusCode === 403) {
+          res.status(403).json({
+            error: 'You do not have permission to view account members. Account admin access is required.',
+          });
+          return;
+        }
+        if (error.statusCode === 404) {
+          res.status(404).json({
+            error: 'Account members could not be found. The ACC Admin API may not be available for this account.',
+          });
+          return;
+        }
+      }
+
       res.status(500).json({ error: 'Failed to retrieve account members' });
     }
   }

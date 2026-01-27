@@ -89,6 +89,8 @@ export class APSProjectsService {
     let offset = 0;
     const limit = 100;
 
+    logger.info(`Fetching account users for account ${accountId}`);
+
     try {
       while (true) {
         const response = await this.makeRequest<{
@@ -135,8 +137,17 @@ export class APSProjectsService {
         errorDetails.statusCode = error.statusCode;
         errorDetails.errorCode = error.errorCode;
         errorDetails.message = error.message;
+        errorDetails.requestId = error.requestId;
+
+        // Provide more helpful error messages for common cases
+        if (error.statusCode === 403) {
+          logger.error('User does not have permission to view account members. Account admin access required.', errorDetails);
+        } else if (error.statusCode === 404) {
+          logger.error('Account not found or API endpoint not available for this account.', errorDetails);
+        }
       } else if (error instanceof Error) {
         errorDetails.message = error.message;
+        errorDetails.stack = error.stack;
       }
       logger.error('Failed to get account users', errorDetails);
       throw error;
@@ -185,7 +196,20 @@ export class APSProjectsService {
           // Filter out template projects
           .filter((p: DMProjectResponse['data'][0]) => {
             const scopes = p.attributes.scopes || [];
-            const isTemplate = scopes.some(s => s.toLowerCase().includes('template'));
+            const projectName = p.attributes.name || '';
+            const projectType = p.attributes.extension?.data?.projectType || '';
+
+            // Check multiple indicators for templates
+            const isScopeTemplate = scopes.some(s => s.toLowerCase().includes('template'));
+            const isNameTemplate = projectName.toLowerCase().includes('template');
+            const isTypeTemplate = projectType.toLowerCase().includes('template');
+
+            const isTemplate = isScopeTemplate || isNameTemplate || isTypeTemplate;
+
+            if (isTemplate) {
+              logger.debug(`Filtering out template project: ${projectName}`, { scopes, projectType });
+            }
+
             return !isTemplate;
           })
           .map((p: DMProjectResponse['data'][0]) => ({

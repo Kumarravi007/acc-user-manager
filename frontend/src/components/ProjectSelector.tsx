@@ -8,7 +8,7 @@ import Input from './ui/Input';
 import Badge from './ui/Badge';
 import { cn } from '@/lib/utils';
 
-// ACC (Autodesk Construction Cloud) Icon
+// ACC (Autodesk Construction Cloud) Icon - Teal blue with building/cloud design
 const ACCIcon = ({ className }: { className?: string }) => (
   <svg
     viewBox="0 0 24 24"
@@ -16,15 +16,16 @@ const ACCIcon = ({ className }: { className?: string }) => (
     className={cn('h-5 w-5', className)}
     aria-label="Autodesk Construction Cloud"
   >
-    <rect width="24" height="24" rx="4" fill="#1858A8" />
+    <rect width="24" height="24" rx="4" fill="#0696D7" />
+    {/* Cloud shape */}
     <path
-      d="M12 6L6 18h3l1-2h4l1 2h3L12 6zm0 5l1.5 3h-3L12 11z"
+      d="M17.5 13.5C17.5 11.5 15.9 10 14 10C13.7 10 13.4 10.04 13.1 10.1C12.5 8.3 10.8 7 8.8 7C6.3 7 4.3 9 4.3 11.5C4.3 11.7 4.3 11.9 4.4 12.1C3.5 12.5 3 13.4 3 14.5C3 16 4.2 17 5.5 17H16.5C17.9 17 19 15.9 19 14.5C19 13.6 18.4 13.5 17.5 13.5Z"
       fill="white"
     />
   </svg>
 );
 
-// BIM 360 Icon
+// BIM 360 Icon - Orange with circular 360 design
 const BIM360Icon = ({ className }: { className?: string }) => (
   <svg
     viewBox="0 0 24 24"
@@ -33,10 +34,15 @@ const BIM360Icon = ({ className }: { className?: string }) => (
     aria-label="BIM 360"
   >
     <rect width="24" height="24" rx="4" fill="#FF6B00" />
+    {/* Circular arrow representing 360 */}
+    <circle cx="12" cy="12" r="6" stroke="white" strokeWidth="2" fill="none" />
     <path
-      d="M7 8h4v2H9v1h2v2H9v1h2v2H7V8zm6 0h4v2h-2v4h2v2h-4V8z"
-      fill="white"
+      d="M12 6V8M18 12H16M12 18V16M6 12H8"
+      stroke="white"
+      strokeWidth="2"
+      strokeLinecap="round"
     />
+    <circle cx="12" cy="12" r="2" fill="white" />
   </svg>
 );
 
