@@ -93,8 +93,8 @@ export class APSProjectsService {
 
     try {
       while (true) {
-        // Use ACC Admin API endpoint
-        // Documentation: https://aps.autodesk.com/en/docs/acc/v1/reference/http/users-GET/
+        // Use HQ API endpoint to fetch account users
+        // Endpoint: https://developer.api.autodesk.com/hq/v1/accounts/:account_id/users
         const response = await this.makeRequest<{
           results?: Array<{
             id: string;
@@ -108,7 +108,7 @@ export class APSProjectsService {
           pagination?: { limit: number; offset: number; totalResults: number };
         }>(
           'get',
-          `/construction/admin/v1/accounts/${accountId}/users`,
+          `/hq/v1/accounts/${accountId}/users`,
           accessToken,
           { params: { limit, offset } }
         );
