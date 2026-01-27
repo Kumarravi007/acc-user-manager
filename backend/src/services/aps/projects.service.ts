@@ -566,18 +566,22 @@ export class APSProjectsService {
 
   /**
    * Add user to project with specified role
+   * Uses 2-legged OAuth for ACC Admin API access
    * @param params - Parameters for adding user
    * @returns Result of the operation
    */
   async addUserToProject(
     params: AddUserToProjectParams
   ): Promise<AddUserToProjectResult> {
-    const { accountId, projectId, email, role, accessToken } = params;
+    const { accountId, projectId, email, role } = params;
 
     try {
+      // Get 2-legged token for Admin API (required for user management)
+      const twoLeggedToken = await apsAuthService.getTwoLeggedToken();
+
       // First, check if user already exists in project
       const existingUser = await this.checkUserInProject(
-        accessToken,
+        twoLeggedToken,
         accountId,
         projectId,
         email
@@ -598,19 +602,17 @@ export class APSProjectsService {
 
         // Update user role
         return await this.updateUserRole(
-          accessToken,
-          accountId,
           projectId,
           existingUser.id,
           role
         );
       }
 
-      // User doesn't exist, add them
+      // User doesn't exist, add them using ACC Admin API
       const response = await this.makeRequest<{ id: string }>(
         'post',
-        `/hq/v1/accounts/${accountId}/projects/${projectId}/users`,
-        accessToken,
+        `/construction/admin/v1/projects/${projectId}/users`,
+        twoLeggedToken,
         {
           data: {
             email,
@@ -638,19 +640,21 @@ export class APSProjectsService {
 
   /**
    * Update user role in project
+   * Uses 2-legged OAuth for ACC Admin API access
    */
   private async updateUserRole(
-    accessToken: string,
-    accountId: string,
     projectId: string,
     userId: string,
     role: string
   ): Promise<AddUserToProjectResult> {
     try {
+      // Get 2-legged token for Admin API
+      const twoLeggedToken = await apsAuthService.getTwoLeggedToken();
+
       await this.makeRequest(
         'patch',
-        `/hq/v1/accounts/${accountId}/projects/${projectId}/users/${userId}`,
-        accessToken,
+        `/construction/admin/v1/projects/${projectId}/users/${userId}`,
+        twoLeggedToken,
         {
           data: {
             industryRoles: [role],
