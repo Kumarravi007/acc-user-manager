@@ -628,9 +628,37 @@ export class APSProjectsService {
           companyId: user.companyId,
           companyName: user.companyName,
         });
+
+        // If user has a company_id, use it
+        if (user.companyId) {
+          return {
+            userId: user.id,
+            companyId: user.companyId,
+            foundInAccount: true,
+          };
+        }
+
+        // User found but has no company - get default company from account
+        logger.warn(`User ${email} found in account but has no company_id - fetching default company`);
+        const companies = await this.getAccountCompanies(accountId);
+        if (companies.length > 0) {
+          const defaultCompany = companies[0];
+          logger.info(`Using default company for user ${email}`, {
+            companyId: defaultCompany.id,
+            companyName: defaultCompany.name,
+          });
+          return {
+            userId: user.id,
+            companyId: defaultCompany.id,
+            foundInAccount: true,
+          };
+        }
+
+        // No companies found - return without company_id
+        logger.warn(`No companies found in account ${accountId} for user ${email}`);
         return {
           userId: user.id,
-          companyId: user.companyId || null,
+          companyId: null,
           foundInAccount: true,
         };
       }
