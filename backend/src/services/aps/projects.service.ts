@@ -634,31 +634,67 @@ export class APSProjectsService {
         };
       }
 
-      // User doesn't exist, add them using ACC Admin API
-      // ACC Admin API expects: email, roleIds (optional), products (optional)
-      const requestData: any = {
-        email,
-        products: [
-          {
-            key: 'projectAdministration',
-            access: 'administrator',
-          },
-        ],
-      };
+      // User doesn't exist, add them
+      // Try ACC Admin API first, fall back to HQ API for BIM 360 projects
+      let response: { id: string };
 
-      // Only include roleIds if it's a valid UUID
-      if (isValidRoleUuid) {
-        requestData.roleIds = [role];
+      try {
+        // ACC Admin API expects: email, roleIds (optional), products (optional)
+        const accRequestData: any = {
+          email,
+          products: [
+            {
+              key: 'projectAdministration',
+              access: 'administrator',
+            },
+          ],
+        };
+
+        // Only include roleIds if it's a valid UUID
+        if (isValidRoleUuid) {
+          accRequestData.roleIds = [role];
+        }
+
+        logger.info(`Trying ACC Admin API for project ${cleanProjectId}`, { accRequestData });
+
+        response = await this.makeRequest<{ id: string }>(
+          'post',
+          `/construction/admin/v1/projects/${cleanProjectId}/users`,
+          twoLeggedToken,
+          { data: accRequestData }
+        );
+      } catch (accError: any) {
+        // If ACC API fails with "platform to be ACC" error, try HQ API (for BIM 360)
+        const errorMsg = accError?.message || '';
+        if (errorMsg.includes('platform to be ACC') || errorMsg.includes('platform')) {
+          logger.info(`Project ${cleanProjectId} is BIM 360, using HQ API`);
+
+          // HQ API format for BIM 360
+          const hqRequestData: any = {
+            email,
+            products: [
+              {
+                key: 'projectAdministration',
+                access: 'administrator',
+              },
+            ],
+          };
+
+          // HQ API uses industryRoles instead of roleIds
+          if (isValidRoleUuid) {
+            hqRequestData.industry_roles = [role];
+          }
+
+          response = await this.makeRequest<{ id: string }>(
+            'post',
+            `/hq/v1/accounts/${accountId}/projects/${cleanProjectId}/users`,
+            twoLeggedToken,
+            { data: hqRequestData }
+          );
+        } else {
+          throw accError;
+        }
       }
-
-      logger.info(`Sending add user request`, { requestData });
-
-      const response = await this.makeRequest<{ id: string }>(
-        'post',
-        `/construction/admin/v1/projects/${cleanProjectId}/users`,
-        twoLeggedToken,
-        { data: requestData }
-      );
 
       logger.info(`Successfully added user ${email} to project ${cleanProjectId}`);
 
