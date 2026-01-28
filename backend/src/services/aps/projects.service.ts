@@ -581,11 +581,16 @@ export class APSProjectsService {
     // ACC Admin API expects UUID without "b." prefix
     const cleanProjectId = projectId.replace('b.', '');
 
+    // Validate role is a valid UUID if provided
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const isValidRoleUuid = role && uuidRegex.test(role);
+
     logger.info(`Adding user ${email} to project`, {
       originalProjectId: projectId,
       cleanProjectId,
       accountId,
-      role
+      role,
+      isValidRoleUuid
     });
 
     try {
@@ -603,42 +608,56 @@ export class APSProjectsService {
       if (existingUser) {
         logger.info(`User ${email} already exists in project ${cleanProjectId}`);
 
-        // Check if role needs to be updated
-        const hasRole = existingUser.roleIds.includes(role);
+        // Check if role needs to be updated (only if valid role UUID)
+        if (isValidRoleUuid) {
+          const hasRole = existingUser.roleIds.includes(role);
 
-        if (hasRole) {
-          return {
-            success: true,
-            userId: existingUser.id,
-          };
+          if (hasRole) {
+            return {
+              success: true,
+              userId: existingUser.id,
+            };
+          }
+
+          // Update user role
+          return await this.updateUserRole(
+            cleanProjectId,
+            existingUser.id,
+            role
+          );
         }
 
-        // Update user role
-        return await this.updateUserRole(
-          cleanProjectId,
-          existingUser.id,
-          role
-        );
+        // User exists but no role to update
+        return {
+          success: true,
+          userId: existingUser.id,
+        };
       }
 
       // User doesn't exist, add them using ACC Admin API
       // ACC Admin API expects: email, roleIds (optional), products (optional)
+      const requestData: any = {
+        email,
+        products: [
+          {
+            key: 'projectAdministration',
+            access: 'administrator',
+          },
+        ],
+      };
+
+      // Only include roleIds if it's a valid UUID
+      if (isValidRoleUuid) {
+        requestData.roleIds = [role];
+      }
+
+      logger.info(`Sending add user request`, { requestData });
+
       const response = await this.makeRequest<{ id: string }>(
         'post',
         `/construction/admin/v1/projects/${cleanProjectId}/users`,
         twoLeggedToken,
-        {
-          data: {
-            email,
-            roleIds: role ? [role] : undefined,
-            products: [
-              {
-                key: 'projectAdministration',
-                access: 'administrator',
-              },
-            ],
-          },
-        }
+        { data: requestData }
       );
 
       logger.info(`Successfully added user ${email} to project ${cleanProjectId}`);
