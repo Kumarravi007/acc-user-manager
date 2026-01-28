@@ -793,8 +793,9 @@ export class APSProjectsService {
           // Look up user info from account members
           const userInfo = await this.getAccountUserInfo(accountId, email);
 
-          // BIM 360 HQ API format - uses services object
+          // BIM 360 HQ API format requires: email (required), services (required), company_id (required)
           const hqRequestData: any = {
+            email,
             services: {
               document_management: {
                 access_level: 'admin',
@@ -802,20 +803,9 @@ export class APSProjectsService {
             },
           };
 
-          // Use user_id if user is in account (preferred), otherwise use email
-          // BIM 360 HQ API ALWAYS requires company_id
-          if (userInfo.foundInAccount && userInfo.userId) {
-            hqRequestData.user_id = userInfo.userId;
-            logger.info(`Using user_id for existing account member`, { userId: userInfo.userId });
-          } else {
-            hqRequestData.email = email;
-            logger.info(`Using email for user not in account`, { email });
-          }
-
           // company_id is REQUIRED for BIM 360 HQ API
           if (userInfo.companyId) {
             hqRequestData.company_id = userInfo.companyId;
-            logger.info(`Adding company_id to request`, { companyId: userInfo.companyId });
           } else {
             logger.warn(`No company_id available for ${email} - request may fail`);
           }
@@ -826,8 +816,7 @@ export class APSProjectsService {
           }
 
           logger.info(`Sending BIM 360 HQ API request`, {
-            hasUserId: !!hqRequestData.user_id,
-            hasEmail: !!hqRequestData.email,
+            email: hqRequestData.email,
             services: hqRequestData.services,
             companyId: hqRequestData.company_id,
             hasIndustryRoles: !!hqRequestData.industry_roles,
