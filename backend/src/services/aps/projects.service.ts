@@ -607,43 +607,56 @@ export class APSProjectsService {
   }
 
   /**
-   * Look up a user's company_id from account members
-   * If user not found, returns the default/first company in the account
-   * Required for BIM 360 HQ API when adding users to projects
+   * Look up user info from account members for BIM 360 project user assignment
+   * Returns user_id, company_id, and whether user was found in account
    */
-  private async getUserCompanyId(
+  private async getAccountUserInfo(
     accountId: string,
     email: string
-  ): Promise<string | null> {
+  ): Promise<{ userId: string | null; companyId: string | null; foundInAccount: boolean }> {
     try {
       const users = await this.getAccountUsers('', accountId);
+      logger.info(`Searching for ${email} in ${users.length} account members`);
+
       const user = users.find(
         (u) => u.email.toLowerCase() === email.toLowerCase()
       );
 
-      if (user?.companyId) {
-        logger.info(`Found company_id for user ${email}`, { companyId: user.companyId });
-        return user.companyId;
+      if (user) {
+        logger.info(`Found user ${email} in account members`, {
+          userId: user.id,
+          companyId: user.companyId,
+          companyName: user.companyName,
+        });
+        return {
+          userId: user.id,
+          companyId: user.companyId || null,
+          foundInAccount: true,
+        };
       }
 
-      logger.warn(`User ${email} not found in account members or has no company_id`);
+      logger.warn(`User ${email} NOT found in account members`);
 
-      // Try to get default company from account companies list
+      // User not in account - try to get default company
       const companies = await this.getAccountCompanies(accountId);
       if (companies.length > 0) {
         const defaultCompany = companies[0];
-        logger.info(`Using default company for user ${email}`, {
+        logger.info(`Will use default company for external user ${email}`, {
           companyId: defaultCompany.id,
           companyName: defaultCompany.name,
         });
-        return defaultCompany.id;
+        return {
+          userId: null,
+          companyId: defaultCompany.id,
+          foundInAccount: false,
+        };
       }
 
       logger.warn(`No companies found in account ${accountId}`);
-      return null;
+      return { userId: null, companyId: null, foundInAccount: false };
     } catch (error) {
-      logger.error('Failed to look up user company_id', { accountId, email, error });
-      return null;
+      logger.error('Failed to look up user info', { accountId, email, error });
+      return { userId: null, companyId: null, foundInAccount: false };
     }
   }
 
@@ -749,13 +762,11 @@ export class APSProjectsService {
         if (errorMsg.includes('platform to be ACC') || errorMsg.includes('platform')) {
           logger.info(`Project ${cleanProjectId} is BIM 360, using HQ API`);
 
-          // Look up user's company_id from account members (required for BIM 360 HQ API)
-          const companyId = await this.getUserCompanyId(accountId, email);
+          // Look up user info from account members
+          const userInfo = await this.getAccountUserInfo(accountId, email);
 
           // BIM 360 HQ API format - uses services object
-          // company_id is required when adding users
           const hqRequestData: any = {
-            email,
             services: {
               document_management: {
                 access_level: 'admin',
@@ -763,9 +774,20 @@ export class APSProjectsService {
             },
           };
 
-          // Add company_id if found (required for BIM 360)
-          if (companyId) {
-            hqRequestData.company_id = companyId;
+          // Use user_id if user is in account (preferred), otherwise use email
+          if (userInfo.foundInAccount && userInfo.userId) {
+            hqRequestData.user_id = userInfo.userId;
+            logger.info(`Using user_id for existing account member`, { userId: userInfo.userId });
+          } else {
+            hqRequestData.email = email;
+            logger.info(`Using email for user not in account`, { email });
+          }
+
+          // Add company_id (required for BIM 360)
+          if (userInfo.companyId) {
+            hqRequestData.company_id = userInfo.companyId;
+          } else {
+            logger.warn(`No company_id available for ${email} - request may fail`);
           }
 
           // HQ API uses industry_roles (snake_case) instead of roleIds
@@ -774,7 +796,8 @@ export class APSProjectsService {
           }
 
           logger.info(`Sending BIM 360 HQ API request`, {
-            email,
+            hasUserId: !!hqRequestData.user_id,
+            hasEmail: !!hqRequestData.email,
             services: hqRequestData.services,
             companyId: hqRequestData.company_id,
             hasIndustryRoles: !!hqRequestData.industry_roles,
