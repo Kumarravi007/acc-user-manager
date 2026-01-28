@@ -783,19 +783,21 @@ export class APSProjectsService {
           const responseData = error.response?.data;
 
           if (responseData) {
-            if (responseData.detail) {
+            // Check errors array FIRST (ACC Admin API returns errors in this format)
+            if (Array.isArray(responseData.errors) && responseData.errors.length > 0) {
+              errorMessage = responseData.errors.map((e: any) => e.detail || e.message || e.title || JSON.stringify(e)).join('; ');
+            } else if (responseData.detail) {
               errorMessage = responseData.detail;
-            } else if (responseData.message) {
+            } else if (responseData.message && responseData.message !== 'Check errors array') {
               errorMessage = responseData.message;
             } else if (responseData.title) {
               errorMessage = responseData.title;
-            } else if (Array.isArray(responseData.errors) && responseData.errors.length > 0) {
-              // ACC Admin API returns errors array
-              errorMessage = responseData.errors.map((e: any) => e.detail || e.message || e.title || JSON.stringify(e)).join('; ');
             } else if (typeof responseData === 'string') {
               errorMessage = responseData;
             }
           }
+
+          logger.error(`Extracted error message: ${errorMessage}`);
 
           throw new APSError(
             errorMessage,
