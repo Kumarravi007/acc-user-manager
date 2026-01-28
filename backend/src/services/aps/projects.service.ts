@@ -574,6 +574,33 @@ export class APSProjectsService {
   }
 
   /**
+   * Look up a user's company_id from account members
+   * Required for BIM 360 HQ API when adding users to projects
+   */
+  private async getUserCompanyId(
+    accountId: string,
+    email: string
+  ): Promise<string | null> {
+    try {
+      const users = await this.getAccountUsers('', accountId);
+      const user = users.find(
+        (u) => u.email.toLowerCase() === email.toLowerCase()
+      );
+
+      if (user?.companyId) {
+        logger.info(`Found company_id for user ${email}`, { companyId: user.companyId });
+        return user.companyId;
+      }
+
+      logger.warn(`No company_id found for user ${email} in account ${accountId}`);
+      return null;
+    } catch (error) {
+      logger.error('Failed to look up user company_id', { accountId, email, error });
+      return null;
+    }
+  }
+
+  /**
    * Add user to project with specified role
    * Uses 2-legged OAuth for ACC Admin API access
    * @param params - Parameters for adding user
@@ -675,9 +702,11 @@ export class APSProjectsService {
         if (errorMsg.includes('platform to be ACC') || errorMsg.includes('platform')) {
           logger.info(`Project ${cleanProjectId} is BIM 360, using HQ API`);
 
+          // Look up user's company_id from account members (required for BIM 360 HQ API)
+          const companyId = await this.getUserCompanyId(accountId, email);
+
           // BIM 360 HQ API format - uses services object
-          // Only include document_management (most basic service)
-          // project_administration may require specific subscription
+          // company_id is required when adding users
           const hqRequestData: any = {
             email,
             services: {
@@ -687,6 +716,11 @@ export class APSProjectsService {
             },
           };
 
+          // Add company_id if found (required for BIM 360)
+          if (companyId) {
+            hqRequestData.company_id = companyId;
+          }
+
           // HQ API uses industry_roles (snake_case) instead of roleIds
           if (isValidRoleUuid) {
             hqRequestData.industry_roles = [role];
@@ -695,6 +729,7 @@ export class APSProjectsService {
           logger.info(`Sending BIM 360 HQ API request`, {
             email,
             services: hqRequestData.services,
+            companyId: hqRequestData.company_id,
             hasIndustryRoles: !!hqRequestData.industry_roles,
           });
 
