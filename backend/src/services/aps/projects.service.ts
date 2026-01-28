@@ -837,7 +837,9 @@ export class APSProjectsService {
           }
         }
 
-        // BIM 360 import endpoint expects an array of users and returns { success: [...], failure: [...] }
+        // BIM 360 v2 import endpoint returns:
+        //   { success: <int>, failure: <int>, success_items: [...], failure_items: [...] }
+        // Note: "success" and "failure" are INTEGER counts, NOT arrays
         const importResult = await this.makeRequest<any>(
           'post',
           `/hq/v2/accounts/${accountId}/projects/${cleanProjectId}/users/import`,
@@ -845,35 +847,46 @@ export class APSProjectsService {
           { data: [userData], headers: importHeaders }
         );
 
-        // Log the full raw response to understand the API's actual format
+        // Log the full raw response
         logger.info(`BIM 360 import result RAW`, {
           importResult: JSON.stringify(importResult),
           importResultKeys: importResult ? Object.keys(importResult) : 'null',
-          importResultType: typeof importResult,
         });
 
-        // Handle various response formats from BIM 360 v2 import API
-        // The API may use success/failure OR success_items/failure_items
-        const successItems = importResult?.success || importResult?.success_items || [];
-        const failureItems = importResult?.failure || importResult?.failure_items || [];
+        // Extract arrays - use success_items/failure_items (v2 format)
+        // "success" and "failure" are integer counts, not arrays
+        const successItems: any[] = Array.isArray(importResult?.success_items) ? importResult.success_items : [];
+        const failureItems: any[] = Array.isArray(importResult?.failure_items) ? importResult.failure_items : [];
+        const successCount: number = importResult?.success || 0;
+        const failureCount: number = importResult?.failure || 0;
 
         logger.info(`BIM 360 import parsed`, {
-          successCount: successItems.length,
-          failureCount: failureItems.length,
+          successCount,
+          failureCount,
+          successItemsCount: successItems.length,
+          failureItemsCount: failureItems.length,
           successItems: JSON.stringify(successItems),
           failureItems: JSON.stringify(failureItems),
         });
 
         // Check if user was successfully imported
-        if (successItems.length > 0) {
-          const firstSuccess = successItems[0];
-          response = { id: firstSuccess.user_id || firstSuccess.userId || firstSuccess.email || email };
-        } else if (failureItems.length > 0) {
-          const failureDetail = failureItems[0];
-          throw new Error(`BIM 360 import failed: ${JSON.stringify(failureDetail.errors || failureDetail)}`);
+        if (successItems.length > 0 || successCount > 0) {
+          if (successItems.length > 0) {
+            const firstSuccess = successItems[0];
+            response = { id: firstSuccess.user_id || firstSuccess.userId || firstSuccess.email || email };
+          } else {
+            response = { id: email };
+          }
+        } else if (failureItems.length > 0 || failureCount > 0) {
+          if (failureItems.length > 0) {
+            const failureDetail = failureItems[0];
+            throw new Error(`BIM 360 import failed: ${JSON.stringify(failureDetail.errors || failureDetail)}`);
+          } else {
+            throw new Error(`BIM 360 import failed: ${failureCount} failures (no detail available)`);
+          }
         } else {
-          // Neither success nor failure entries - this is unexpected
-          logger.warn(`BIM 360 import returned no success or failure entries - response may have unexpected format`, {
+          // Neither success nor failure - unexpected response format
+          logger.warn(`BIM 360 import returned unexpected response format`, {
             fullResponse: JSON.stringify(importResult),
           });
           throw new Error(`BIM 360 import returned unexpected response: ${JSON.stringify(importResult)}`);
