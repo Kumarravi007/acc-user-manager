@@ -77,6 +77,7 @@ export class APSProjectsService {
     firstName?: string;
     lastName?: string;
     status: string;
+    companyId?: string;
     companyName?: string;
   }>> {
     const allUsers: Array<{
@@ -86,6 +87,7 @@ export class APSProjectsService {
       firstName?: string;
       lastName?: string;
       status: string;
+      companyId?: string;
       companyName?: string;
     }> = [];
     let offset = 0;
@@ -112,6 +114,7 @@ export class APSProjectsService {
               first_name?: string;
               last_name?: string;
               status: string;
+              company_id?: string;
               company_name?: string;
             }>
           | {
@@ -122,6 +125,7 @@ export class APSProjectsService {
                 first_name?: string;
                 last_name?: string;
                 status: string;
+                company_id?: string;
                 company_name?: string;
               }>;
               pagination?: { limit: number; offset: number; totalResults: number };
@@ -149,6 +153,7 @@ export class APSProjectsService {
           first_name?: string;
           last_name?: string;
           status: string;
+          company_id?: string;
           company_name?: string;
         }>;
 
@@ -165,6 +170,7 @@ export class APSProjectsService {
           firstName: u.first_name,
           lastName: u.last_name,
           status: u.status,
+          companyId: u.company_id,
           companyName: u.company_name,
         }));
 
@@ -669,14 +675,13 @@ export class APSProjectsService {
         if (errorMsg.includes('platform to be ACC') || errorMsg.includes('platform')) {
           logger.info(`Project ${cleanProjectId} is BIM 360, using HQ API`);
 
-          // BIM 360 HQ API format - uses services object, not products array
+          // BIM 360 HQ API format - uses services object
+          // Only include document_management (most basic service)
+          // project_administration may require specific subscription
           const hqRequestData: any = {
             email,
             services: {
               document_management: {
-                access_level: 'user',
-              },
-              project_administration: {
                 access_level: 'admin',
               },
             },
@@ -687,7 +692,11 @@ export class APSProjectsService {
             hqRequestData.industry_roles = [role];
           }
 
-          logger.info(`Sending BIM 360 HQ API request`, { hqRequestData });
+          logger.info(`Sending BIM 360 HQ API request`, {
+            email,
+            services: hqRequestData.services,
+            hasIndustryRoles: !!hqRequestData.industry_roles,
+          });
 
           response = await this.makeRequest<{ id: string }>(
             'post',
