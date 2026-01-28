@@ -795,8 +795,8 @@ export class APSProjectsService {
         // Look up user info from account members
         const userInfo = await this.getAccountUserInfo(accountId, email);
 
-        // BIM 360 HQ API format requires: email (required), services (required), company_id (required)
-        const hqRequestData: any = {
+        // BIM 360 HQ API uses the /users/import endpoint (v2) with an ARRAY body
+        const userData: any = {
           email,
           services: {
             document_management: {
@@ -807,29 +807,43 @@ export class APSProjectsService {
 
         // company_id is REQUIRED for BIM 360 HQ API
         if (userInfo.companyId) {
-          hqRequestData.company_id = userInfo.companyId;
+          userData.company_id = userInfo.companyId;
         } else {
           logger.warn(`No company_id available for ${email} - request may fail`);
         }
 
         // HQ API uses industry_roles (snake_case) instead of roleIds
         if (isValidRoleUuid) {
-          hqRequestData.industry_roles = [role];
+          userData.industry_roles = [role];
         }
 
-        logger.info(`Sending BIM 360 HQ API request`, {
-          email: hqRequestData.email,
-          services: hqRequestData.services,
-          companyId: hqRequestData.company_id,
-          hasIndustryRoles: !!hqRequestData.industry_roles,
+        logger.info(`Sending BIM 360 HQ API import request`, {
+          endpoint: `/hq/v2/accounts/${accountId}/projects/${cleanProjectId}/users/import`,
+          userData,
         });
 
-        response = await this.makeRequest<{ id: string }>(
+        // BIM 360 import endpoint expects an array of users and returns { success: [...], failure: [...] }
+        const importResult = await this.makeRequest<{
+          success: Array<{ email: string; user_id: string }>;
+          failure: Array<{ email: string; errors: any }>;
+        }>(
           'post',
-          `/hq/v1/accounts/${accountId}/projects/${cleanProjectId}/users`,
+          `/hq/v2/accounts/${accountId}/projects/${cleanProjectId}/users/import`,
           twoLeggedToken,
-          { data: hqRequestData }
+          { data: [userData] }
         );
+
+        logger.info(`BIM 360 import result`, { importResult });
+
+        // Check if user was successfully imported
+        if (importResult.success && importResult.success.length > 0) {
+          response = { id: importResult.success[0].user_id || importResult.success[0].email };
+        } else if (importResult.failure && importResult.failure.length > 0) {
+          const failureDetail = importResult.failure[0];
+          throw new Error(`BIM 360 import failed: ${JSON.stringify(failureDetail.errors || failureDetail)}`);
+        } else {
+          response = { id: email };
+        }
       }
 
       logger.info(`Successfully added user ${email} to project ${cleanProjectId}`);
