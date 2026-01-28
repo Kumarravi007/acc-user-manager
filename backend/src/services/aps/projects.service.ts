@@ -669,21 +669,25 @@ export class APSProjectsService {
         if (errorMsg.includes('platform to be ACC') || errorMsg.includes('platform')) {
           logger.info(`Project ${cleanProjectId} is BIM 360, using HQ API`);
 
-          // HQ API format for BIM 360
+          // BIM 360 HQ API format - uses services object, not products array
           const hqRequestData: any = {
             email,
-            products: [
-              {
-                key: 'projectAdministration',
-                access: 'administrator',
+            services: {
+              document_management: {
+                access_level: 'user',
               },
-            ],
+              project_administration: {
+                access_level: 'admin',
+              },
+            },
           };
 
-          // HQ API uses industryRoles instead of roleIds
+          // HQ API uses industry_roles (snake_case) instead of roleIds
           if (isValidRoleUuid) {
             hqRequestData.industry_roles = [role];
           }
+
+          logger.info(`Sending BIM 360 HQ API request`, { hqRequestData });
 
           response = await this.makeRequest<{ id: string }>(
             'post',
