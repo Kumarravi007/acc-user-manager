@@ -785,52 +785,51 @@ export class APSProjectsService {
           { data: accRequestData }
         );
       } catch (accError: any) {
-        // If ACC API fails with "platform to be ACC" error, try HQ API (for BIM 360)
+        // ACC Admin API failed - try BIM 360 HQ API as fallback
+        // This handles BIM 360 projects (which return "platform to be ACC" or 401 Unauthorized)
         const errorMsg = accError?.message || '';
-        if (errorMsg.includes('platform to be ACC') || errorMsg.includes('platform')) {
-          logger.info(`Project ${cleanProjectId} is BIM 360, using HQ API`);
+        logger.info(`ACC Admin API failed for project ${cleanProjectId}, falling back to BIM 360 HQ API`, {
+          accError: errorMsg,
+        });
 
-          // Look up user info from account members
-          const userInfo = await this.getAccountUserInfo(accountId, email);
+        // Look up user info from account members
+        const userInfo = await this.getAccountUserInfo(accountId, email);
 
-          // BIM 360 HQ API format requires: email (required), services (required), company_id (required)
-          const hqRequestData: any = {
-            email,
-            services: {
-              document_management: {
-                access_level: 'admin',
-              },
+        // BIM 360 HQ API format requires: email (required), services (required), company_id (required)
+        const hqRequestData: any = {
+          email,
+          services: {
+            document_management: {
+              access_level: 'admin',
             },
-          };
+          },
+        };
 
-          // company_id is REQUIRED for BIM 360 HQ API
-          if (userInfo.companyId) {
-            hqRequestData.company_id = userInfo.companyId;
-          } else {
-            logger.warn(`No company_id available for ${email} - request may fail`);
-          }
-
-          // HQ API uses industry_roles (snake_case) instead of roleIds
-          if (isValidRoleUuid) {
-            hqRequestData.industry_roles = [role];
-          }
-
-          logger.info(`Sending BIM 360 HQ API request`, {
-            email: hqRequestData.email,
-            services: hqRequestData.services,
-            companyId: hqRequestData.company_id,
-            hasIndustryRoles: !!hqRequestData.industry_roles,
-          });
-
-          response = await this.makeRequest<{ id: string }>(
-            'post',
-            `/hq/v1/accounts/${accountId}/projects/${cleanProjectId}/users`,
-            twoLeggedToken,
-            { data: hqRequestData }
-          );
+        // company_id is REQUIRED for BIM 360 HQ API
+        if (userInfo.companyId) {
+          hqRequestData.company_id = userInfo.companyId;
         } else {
-          throw accError;
+          logger.warn(`No company_id available for ${email} - request may fail`);
         }
+
+        // HQ API uses industry_roles (snake_case) instead of roleIds
+        if (isValidRoleUuid) {
+          hqRequestData.industry_roles = [role];
+        }
+
+        logger.info(`Sending BIM 360 HQ API request`, {
+          email: hqRequestData.email,
+          services: hqRequestData.services,
+          companyId: hqRequestData.company_id,
+          hasIndustryRoles: !!hqRequestData.industry_roles,
+        });
+
+        response = await this.makeRequest<{ id: string }>(
+          'post',
+          `/hq/v1/accounts/${accountId}/projects/${cleanProjectId}/users`,
+          twoLeggedToken,
+          { data: hqRequestData }
+        );
       }
 
       logger.info(`Successfully added user ${email} to project ${cleanProjectId}`);
