@@ -364,6 +364,9 @@ export class APSProjectsService {
     let offset = 0;
     const limit = 100;
 
+    // ACC Admin API expects UUID without "b." prefix
+    const cleanProjectId = projectId.replace('b.', '');
+
     try {
       // Get 2-legged token for Admin API (required for project users endpoint)
       const twoLeggedToken = await apsAuthService.getTwoLeggedToken();
@@ -389,7 +392,7 @@ export class APSProjectsService {
           }>;
         }>(
           'get',
-          `/construction/admin/v1/projects/${projectId}/users`,
+          `/construction/admin/v1/projects/${cleanProjectId}/users`,
           twoLeggedToken,
           { params: { limit, offset } }
         );
@@ -575,6 +578,16 @@ export class APSProjectsService {
   ): Promise<AddUserToProjectResult> {
     const { accountId, projectId, email, role } = params;
 
+    // ACC Admin API expects UUID without "b." prefix
+    const cleanProjectId = projectId.replace('b.', '');
+
+    logger.info(`Adding user ${email} to project`, {
+      originalProjectId: projectId,
+      cleanProjectId,
+      accountId,
+      role
+    });
+
     try {
       // Get 2-legged token for Admin API (required for user management)
       const twoLeggedToken = await apsAuthService.getTwoLeggedToken();
@@ -583,12 +596,12 @@ export class APSProjectsService {
       const existingUser = await this.checkUserInProject(
         twoLeggedToken,
         accountId,
-        projectId,
+        cleanProjectId,
         email
       );
 
       if (existingUser) {
-        logger.info(`User ${email} already exists in project ${projectId}`);
+        logger.info(`User ${email} already exists in project ${cleanProjectId}`);
 
         // Check if role needs to be updated
         const hasRole = existingUser.roleIds.includes(role);
@@ -602,7 +615,7 @@ export class APSProjectsService {
 
         // Update user role
         return await this.updateUserRole(
-          projectId,
+          cleanProjectId,
           existingUser.id,
           role
         );
@@ -612,7 +625,7 @@ export class APSProjectsService {
       // ACC Admin API expects: email, roleIds (optional), products (optional)
       const response = await this.makeRequest<{ id: string }>(
         'post',
-        `/construction/admin/v1/projects/${projectId}/users`,
+        `/construction/admin/v1/projects/${cleanProjectId}/users`,
         twoLeggedToken,
         {
           data: {
@@ -628,7 +641,7 @@ export class APSProjectsService {
         }
       );
 
-      logger.info(`Successfully added user ${email} to project ${projectId}`);
+      logger.info(`Successfully added user ${email} to project ${cleanProjectId}`);
 
       return {
         success: true,
