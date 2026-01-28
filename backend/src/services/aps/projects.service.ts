@@ -574,7 +574,41 @@ export class APSProjectsService {
   }
 
   /**
+   * Get companies from BIM 360 account
+   * Used to get default company_id for adding users
+   */
+  private async getAccountCompanies(
+    accountId: string
+  ): Promise<Array<{ id: string; name: string }>> {
+    try {
+      const twoLeggedToken = await apsAuthService.getTwoLeggedToken();
+
+      const response = await this.makeRequest<
+        Array<{ id: string; name: string }> | { results?: Array<{ id: string; name: string }> }
+      >(
+        'get',
+        `/hq/v1/accounts/${accountId}/companies`,
+        twoLeggedToken
+      );
+
+      let companies: Array<{ id: string; name: string }>;
+      if (Array.isArray(response)) {
+        companies = response;
+      } else {
+        companies = response.results || [];
+      }
+
+      logger.info(`Retrieved ${companies.length} companies for account ${accountId}`);
+      return companies;
+    } catch (error) {
+      logger.error('Failed to get account companies', { accountId, error });
+      return [];
+    }
+  }
+
+  /**
    * Look up a user's company_id from account members
+   * If user not found, returns the default/first company in the account
    * Required for BIM 360 HQ API when adding users to projects
    */
   private async getUserCompanyId(
@@ -592,7 +626,20 @@ export class APSProjectsService {
         return user.companyId;
       }
 
-      logger.warn(`No company_id found for user ${email} in account ${accountId}`);
+      logger.warn(`User ${email} not found in account members or has no company_id`);
+
+      // Try to get default company from account companies list
+      const companies = await this.getAccountCompanies(accountId);
+      if (companies.length > 0) {
+        const defaultCompany = companies[0];
+        logger.info(`Using default company for user ${email}`, {
+          companyId: defaultCompany.id,
+          companyName: defaultCompany.name,
+        });
+        return defaultCompany.id;
+      }
+
+      logger.warn(`No companies found in account ${accountId}`);
       return null;
     } catch (error) {
       logger.error('Failed to look up user company_id', { accountId, email, error });
