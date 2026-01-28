@@ -276,6 +276,7 @@ export interface AddUserToProjectParams {
   email: string;
   role: string;
   accessToken: string;
+  adminUserId?: string;
 }
 
 export interface AddUserToProjectResult {
@@ -298,6 +299,7 @@ export interface BulkAssignmentJobData {
   projectIds: string[];
   role: string;
   accessToken: string;
+  adminUserId?: string;
 }
 
 export interface ProjectAssignmentTask {
@@ -308,6 +310,7 @@ export interface ProjectAssignmentTask {
   role: string;
   accountId: string;
   accessToken: string;
+  adminUserId?: string;
 }
 
 // ============================================================================

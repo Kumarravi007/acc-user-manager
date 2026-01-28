@@ -697,7 +697,7 @@ export class APSProjectsService {
   async addUserToProject(
     params: AddUserToProjectParams
   ): Promise<AddUserToProjectResult> {
-    const { accountId, projectId, email, role } = params;
+    const { accountId, projectId, email, role, adminUserId } = params;
 
     // ACC Admin API expects UUID without "b." prefix
     const cleanProjectId = projectId.replace('b.', '');
@@ -820,7 +820,22 @@ export class APSProjectsService {
         logger.info(`Sending BIM 360 HQ API import request`, {
           endpoint: `/hq/v2/accounts/${accountId}/projects/${cleanProjectId}/users/import`,
           userData,
+          adminUserId,
         });
+
+        // Build headers for BIM 360 import - x-user-id is required (admin's Autodesk UID)
+        const importHeaders: Record<string, string> = {};
+        if (adminUserId) {
+          importHeaders['x-user-id'] = adminUserId;
+        } else {
+          // Fallback: use the user being looked up if they're an account member
+          if (userInfo.userId) {
+            importHeaders['x-user-id'] = userInfo.userId;
+            logger.warn(`No adminUserId provided, using target user's ID as x-user-id: ${userInfo.userId}`);
+          } else {
+            logger.warn(`No adminUserId or target userId available for x-user-id header`);
+          }
+        }
 
         // BIM 360 import endpoint expects an array of users and returns { success: [...], failure: [...] }
         const importResult = await this.makeRequest<{
@@ -830,7 +845,7 @@ export class APSProjectsService {
           'post',
           `/hq/v2/accounts/${accountId}/projects/${cleanProjectId}/users/import`,
           twoLeggedToken,
-          { data: [userData] }
+          { data: [userData], headers: importHeaders }
         );
 
         logger.info(`BIM 360 import result`, { importResult });
@@ -938,6 +953,7 @@ export class APSProjectsService {
     options: {
       params?: Record<string, any>;
       data?: Record<string, any>;
+      headers?: Record<string, string>;
     } = {}
   ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
@@ -950,6 +966,7 @@ export class APSProjectsService {
           headers: {
             Authorization: `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
+            ...options.headers,
           },
           params: options.params,
           data: options.data,

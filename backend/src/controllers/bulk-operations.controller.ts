@@ -197,6 +197,7 @@ export class BulkOperationsController {
         projectIds,
         role,
         accessToken,
+        adminUserId: req.session.apsUserId,
       });
 
       // Audit log

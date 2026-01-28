@@ -25,7 +25,7 @@ const worker = new Worker<BulkAssignmentJobData>(
     });
 
     const db = getDb();
-    const { executionId, accountId, userEmails, projectIds, role, accessToken } = job.data;
+    const { executionId, accountId, userEmails, projectIds, role, accessToken, adminUserId } = job.data;
 
     try {
       // Update job execution status to processing
@@ -64,6 +64,7 @@ const worker = new Worker<BulkAssignmentJobData>(
             role,
             accountId,
             accessToken,
+            adminUserId,
           });
         }
       }
@@ -184,7 +185,7 @@ async function processTask(
   task: ProjectAssignmentTask,
   db: any
 ): Promise<{ success: boolean }> {
-  const { executionId, projectId, userEmail, role, accountId, accessToken } = task;
+  const { executionId, projectId, userEmail, role, accountId, accessToken, adminUserId } = task;
 
   // Find the job result record
   const resultRow = await db.query(
@@ -239,6 +240,7 @@ async function processTask(
       email: userEmail,
       role,
       accessToken,
+      adminUserId,
     });
 
     if (result.success) {
