@@ -803,19 +803,21 @@ export class APSProjectsService {
           };
 
           // Use user_id if user is in account (preferred), otherwise use email
+          // For existing account members, user_id alone should work (no company_id needed)
+          // For external users, we need email + company_id
           if (userInfo.foundInAccount && userInfo.userId) {
             hqRequestData.user_id = userInfo.userId;
-            logger.info(`Using user_id for existing account member`, { userId: userInfo.userId });
+            logger.info(`Using user_id for existing account member (no company_id needed)`, { userId: userInfo.userId });
+            // Don't add company_id for existing members - it may conflict
           } else {
             hqRequestData.email = email;
             logger.info(`Using email for user not in account`, { email });
-          }
-
-          // Add company_id (required for BIM 360)
-          if (userInfo.companyId) {
-            hqRequestData.company_id = userInfo.companyId;
-          } else {
-            logger.warn(`No company_id available for ${email} - request may fail`);
+            // Only add company_id for external users (required)
+            if (userInfo.companyId) {
+              hqRequestData.company_id = userInfo.companyId;
+            } else {
+              logger.warn(`No company_id available for external user ${email} - request may fail`);
+            }
           }
 
           // HQ API uses industry_roles (snake_case) instead of roleIds
