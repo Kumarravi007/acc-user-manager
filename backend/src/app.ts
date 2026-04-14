@@ -70,7 +70,7 @@ const limiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   store: new RedisStore({
-    // @ts-ignore
+    // @ts-expect-error sendCommand typing mismatch with ioredis
     sendCommand: (...args: string[]) => redisClient.call(...args),
   }),
   message: 'Too many requests from this IP, please try again later.',

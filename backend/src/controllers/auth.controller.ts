@@ -54,7 +54,7 @@ export class AuthController {
       const db = getDb();
 
       // Check if user exists
-      let userRow = await db.query(
+      const userRow = await db.query(
         'SELECT * FROM users WHERE aps_user_id = $1',
         [authResult.userProfile.userId]
       );

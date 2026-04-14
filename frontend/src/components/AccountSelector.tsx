@@ -17,8 +17,6 @@ export default function AccountSelector({
   onAccountChange,
   isLoading = false,
 }: AccountSelectorProps) {
-  const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
-
   return (
     <div className="bg-white border-b px-4 py-3">
       <div className="max-w-7xl mx-auto flex items-center gap-4">

@@ -9,7 +9,7 @@ import {
   Download,
   RefreshCw,
 } from 'lucide-react';
-import { JobExecution, JobResult } from '@/types';
+import { JobExecution } from '@/types';
 import { Card, CardHeader, CardTitle, CardContent } from './ui/Card';
 import Progress from './ui/Progress';
 import Badge from './ui/Badge';
